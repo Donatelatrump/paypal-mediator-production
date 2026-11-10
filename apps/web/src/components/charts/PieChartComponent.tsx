@@ -8,7 +8,7 @@ interface PieChartProps {
   height?: number;
 }
 
-export function PieChartComponent({ data, title, height = 300 }: PieChartComponentProps) {
+export function PieChartComponent({ data, title, height = 300 }: PieChartProps) {
   if (!data.length) {
     return <div className="h-64 flex items-center justify-center text-muted-foreground">No data</div>;
   }
