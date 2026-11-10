@@ -7,14 +7,22 @@ export const queryKeys = {
   readiness: ['readiness'] as const,
   me: ['merchant', 'me'] as const,
   integrations: ['integrations'] as const,
-  transactions: (params?: { page?: number; pageSize?: number; paypalCaptureId?: string }) =>
-    ['transactions', params] as const,
+  transactions: (params?: {
+    page?: number;
+    pageSize?: number;
+    paypalCaptureId?: string;
+  }) => ['transactions', params] as const,
   transaction: (id: string) => ['transaction', id] as const,
   evidence: (id: string) => ['evidence', id] as const,
   disputes: ['disputes'] as const,
   dispute: (id: string) => ['dispute', id] as const,
-  activity: (params?: { page?: number; pageSize?: number; merchantId?: string; from?: string; to?: string }) =>
-    ['activity', params] as const,
+  activity: (params?: {
+    page?: number;
+    pageSize?: number;
+    merchantId?: string;
+    from?: string;
+    to?: string;
+  }) => ['activity', params] as const,
   metrics: (params?: { merchantId?: string; from?: string; to?: string }) =>
     ['metrics', params] as const,
 };
@@ -45,7 +53,10 @@ export function useUpdateMerchant() {
 
 // Integrations
 export function useIntegrations() {
-  return useQuery({ queryKey: queryKeys.integrations, queryFn: api.getIntegrations });
+  return useQuery({
+    queryKey: queryKeys.integrations,
+    queryFn: api.getIntegrations,
+  });
 }
 
 export function useCheckPayPal() {
@@ -53,16 +64,31 @@ export function useCheckPayPal() {
 }
 
 // Transactions
-export function useTransactions(params?: { page?: number; pageSize?: number; paypalCaptureId?: string }) {
-  return useQuery({ queryKey: queryKeys.transactions(params), queryFn: () => api.listTransactions(params) });
+export function useTransactions(params?: {
+  page?: number;
+  pageSize?: number;
+  paypalCaptureId?: string;
+}) {
+  return useQuery({
+    queryKey: queryKeys.transactions(params),
+    queryFn: () => api.listTransactions(params),
+  });
 }
 
 export function useTransaction(id: string) {
-  return useQuery({ queryKey: queryKeys.transaction(id), queryFn: () => api.getTransaction(id), enabled: !!id });
+  return useQuery({
+    queryKey: queryKeys.transaction(id),
+    queryFn: () => api.getTransaction(id),
+    enabled: !!id,
+  });
 }
 
 export function useEvidence(id: string) {
-  return useQuery({ queryKey: queryKeys.evidence(id), queryFn: () => api.getEvidence(id), enabled: !!id });
+  return useQuery({
+    queryKey: queryKeys.evidence(id),
+    queryFn: () => api.getEvidence(id),
+    enabled: !!id,
+  });
 }
 
 export function useRefreshEvidence() {
@@ -87,7 +113,11 @@ export function useDisputes() {
 }
 
 export function useDispute(id: string) {
-  return useQuery({ queryKey: queryKeys.dispute(id), queryFn: () => api.getDispute(id), enabled: !!id });
+  return useQuery({
+    queryKey: queryKeys.dispute(id),
+    queryFn: () => api.getDispute(id),
+    enabled: !!id,
+  });
 }
 
 export function useInvestigateDispute() {
@@ -121,10 +151,31 @@ export function useSubmitDispute() {
 }
 
 // Activity / Monitoring
-export function useActivity(params?: { page?: number; pageSize?: number; merchantId?: string; from?: string; to?: string }) {
-  return useQuery({ queryKey: queryKeys.activity(params), queryFn: () => api.getActivity(params) });
+export function useActivity(params?: {
+  page?: number;
+  pageSize?: number;
+  merchantId?: string;
+  from?: string;
+  to?: string;
+}) {
+  return useQuery({
+    queryKey: queryKeys.activity(params),
+    queryFn: () => api.getActivity(params),
+  });
 }
 
-export function useMetrics(params?: { merchantId?: string; from?: string; to?: string }) {
-  return useQuery({ queryKey: queryKeys.metrics(params), queryFn: () => api.getMetrics(params) });
+export function useMetrics(params?: {
+  merchantId?: string;
+  from?: string;
+  to?: string;
+}) {
+  return useQuery({
+    queryKey: queryKeys.metrics(params),
+    queryFn: () => api.getMetrics(params),
+  });
+}
+
+// Dashboard (optimized - single query)
+export function useDashboard() {
+  return useQuery({ queryKey: ['dashboard'], queryFn: api.getDashboard });
 }

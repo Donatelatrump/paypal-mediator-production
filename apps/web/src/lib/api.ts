@@ -1,10 +1,14 @@
 import { createClient } from './supabase';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://resolve-ai-api-ybmj.onrender.com';
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  'https://resolve-ai-api-ybmj.onrender.com';
 
 async function getAccessToken(): Promise<string | null> {
   const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   return session?.access_token ?? null;
 }
 
@@ -17,7 +21,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
-      'Authorization': `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
       ...options.headers,
     },
@@ -42,20 +46,70 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   // Health
-  health: () => request<{ status: string; service: string; environment: string; timestamp: string }>('/api/health'),
-  readiness: () => request<{ status: 'ready' | 'not_ready'; checks: { database: 'up' | 'down' }; timestamp: string }>('/api/health/ready'),
+  health: () =>
+    request<{
+      status: string;
+      service: string;
+      environment: string;
+      timestamp: string;
+    }>('/api/health'),
+  readiness: () =>
+    request<{
+      status: 'ready' | 'not_ready';
+      checks: { database: 'up' | 'down' };
+      timestamp: string;
+    }>('/api/health/ready'),
+
+  // Dashboard (optimized single query)
+  getDashboard: () => request<DashboardData>('/api/dashboard'),
 
   // Merchants
-  getMe: () => request<{
-    id: string;
-    displayName: string;
-    role: 'ADMIN' | 'VIEWER';
-    policy: {
-      allowInvestigations: boolean;
-      allowSubmissions: boolean;
-      requireMerchantApproval: boolean;
-    };
-    integration: {
+  getMe: () =>
+    request<{
+      id: string;
+      displayName: string;
+      role: 'ADMIN' | 'VIEWER';
+      policy: {
+        allowInvestigations: boolean;
+        allowSubmissions: boolean;
+        requireMerchantApproval: boolean;
+      };
+      integration: {
+        provider: string;
+        environment: string;
+        credentialsConfigured: boolean;
+        webhookConfigured: boolean;
+        connectionStatus: string;
+        disputesReadStatus: string;
+        lastCheckedAt: string | null;
+        paypalHttpStatus: number | null;
+        paypalDebugId: string | null;
+        source: string;
+      };
+    }>('/api/merchants/me'),
+
+  updateSettings: (body: {
+    displayName?: string;
+    contactName?: string;
+    email?: string;
+    phone?: string;
+    timezone?: string;
+  }) =>
+    request<{
+      id: string;
+      displayName: string;
+      contactName: string;
+      email: string;
+      phone: string;
+      timezone: string;
+    }>('/api/merchants/me/settings', {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+
+  // Integrations
+  getIntegrations: () =>
+    request<{
       provider: string;
       environment: string;
       credentialsConfigured: boolean;
@@ -66,43 +120,29 @@ export const api = {
       paypalHttpStatus: number | null;
       paypalDebugId: string | null;
       source: string;
-    };
-  }>('/api/merchants/me'),
+    }>('/api/settings/integrations'),
 
-  updateSettings: (body: { displayName?: string; contactName?: string; email?: string; phone?: string; timezone?: string }) =>
-    request<{ id: string; displayName: string; contactName: string; email: string; phone: string; timezone: string }>(
-      '/api/merchants/me/settings',
-      { method: 'PATCH', body: JSON.stringify(body) }
-    ),
-
-  // Integrations
-  getIntegrations: () => request<{
-    provider: string;
-    environment: string;
-    credentialsConfigured: boolean;
-    webhookConfigured: boolean;
-    connectionStatus: string;
-    disputesReadStatus: string;
-    lastCheckedAt: string | null;
-    paypalHttpStatus: number | null;
-    paypalDebugId: string | null;
-    source: string;
-  }>('/api/settings/integrations'),
-
-  checkPayPal: () => request<{
-    connectionStatus: string;
-    disputesReadStatus: string;
-    lastCheckedAt: string;
-    paypalHttpStatus: number;
-    paypalDebugId: string;
-  }>('/api/settings/integrations/paypal/check', { method: 'POST' }),
+  checkPayPal: () =>
+    request<{
+      connectionStatus: string;
+      disputesReadStatus: string;
+      lastCheckedAt: string;
+      paypalHttpStatus: number;
+      paypalDebugId: string;
+    }>('/api/settings/integrations/paypal/check', { method: 'POST' }),
 
   // Transactions
-  listTransactions: (params?: { page?: number; pageSize?: number; paypalCaptureId?: string }) => {
+  listTransactions: (params?: {
+    page?: number;
+    pageSize?: number;
+    paypalCaptureId?: string;
+  }) => {
     const searchParams = new URLSearchParams();
     if (params?.page) searchParams.set('page', params.page.toString());
-    if (params?.pageSize) searchParams.set('pageSize', params.pageSize.toString());
-    if (params?.paypalCaptureId) searchParams.set('paypalCaptureId', params.paypalCaptureId);
+    if (params?.pageSize)
+      searchParams.set('pageSize', params.pageSize.toString());
+    if (params?.paypalCaptureId)
+      searchParams.set('paypalCaptureId', params.paypalCaptureId);
     return request<{
       items: Transaction[];
       page: number;
@@ -115,12 +155,14 @@ export const api = {
     request<Transaction>(`/api/transactions/${encodeURIComponent(id)}`),
 
   getEvidence: (id: string) =>
-    request<EvidenceDossier>(`/api/transactions/${encodeURIComponent(id)}/evidence`),
+    request<EvidenceDossier>(
+      `/api/transactions/${encodeURIComponent(id)}/evidence`,
+    ),
 
   refreshEvidence: (id: string) =>
     request<{ jobId: string; status: string }>(
       `/api/transactions/${encodeURIComponent(id)}/refresh-evidence`,
-      { method: 'POST' }
+      { method: 'POST' },
     ),
 
   // Orders
@@ -135,7 +177,12 @@ export const api = {
     taxAmount: string;
     discountAmount: string;
     orderedAt: string;
-    items: Array<{ sku: string; description: string; quantity: number; unitAmount: string }>;
+    items: Array<{
+      sku: string;
+      description: string;
+      quantity: number;
+      unitAmount: string;
+    }>;
   }) =>
     request<{
       id: string;
@@ -151,14 +198,18 @@ export const api = {
       taxAmount: string;
       discountAmount: string;
       orderedAt: string;
-      items: Array<{ sku: string; description: string; quantity: number; unitAmount: string }>;
+      items: Array<{
+        sku: string;
+        description: string;
+        quantity: number;
+        unitAmount: string;
+      }>;
       contentHash: string;
       createdAt: string;
     }>('/api/orders', { method: 'POST', body: JSON.stringify(body) }),
 
   // Disputes
-  listDisputes: () =>
-    request<Dispute[]>(`/api/disputes`),
+  listDisputes: () => request<Dispute[]>(`/api/disputes`),
 
   getDispute: (id: string) =>
     request<Dispute>(`/api/disputes/${encodeURIComponent(id)}`),
@@ -166,26 +217,34 @@ export const api = {
   investigateDispute: (id: string) =>
     request<{ jobId: string; status: string }>(
       `/api/disputes/${encodeURIComponent(id)}/investigate`,
-      { method: 'POST' }
+      { method: 'POST' },
     ),
 
   approveDispute: (id: string) =>
     request<{ approved: boolean }>(
       `/api/disputes/${encodeURIComponent(id)}/approve`,
-      { method: 'POST' }
+      { method: 'POST' },
     ),
 
   submitDispute: (id: string) =>
-    request<{ status: 'SUBMITTED' | 'BLOCKED' | 'FAILED'; paypalRequestId?: string; message?: string }>(
-      `/api/disputes/${encodeURIComponent(id)}/submit`,
-      { method: 'POST' }
-    ),
+    request<{
+      status: 'SUBMITTED' | 'BLOCKED' | 'FAILED';
+      paypalRequestId?: string;
+      message?: string;
+    }>(`/api/disputes/${encodeURIComponent(id)}/submit`, { method: 'POST' }),
 
   // Activity / Monitoring
-  getActivity: (params?: { page?: number; pageSize?: number; merchantId?: string; from?: string; to?: string }) => {
+  getActivity: (params?: {
+    page?: number;
+    pageSize?: number;
+    merchantId?: string;
+    from?: string;
+    to?: string;
+  }) => {
     const searchParams = new URLSearchParams();
     if (params?.page) searchParams.set('page', params.page.toString());
-    if (params?.pageSize) searchParams.set('pageSize', params.pageSize.toString());
+    if (params?.pageSize)
+      searchParams.set('pageSize', params.pageSize.toString());
     if (params?.merchantId) searchParams.set('merchantId', params.merchantId);
     if (params?.from) searchParams.set('from', params.from);
     if (params?.to) searchParams.set('to', params.to);
@@ -197,16 +256,111 @@ export const api = {
     }>(`/api/activity?${searchParams.toString()}`);
   },
 
-  getMetrics: (params?: { merchantId?: string; from?: string; to?: string }) => {
+  getMetrics: (params?: {
+    merchantId?: string;
+    from?: string;
+    to?: string;
+  }) => {
     const searchParams = new URLSearchParams();
     if (params?.merchantId) searchParams.set('merchantId', params.merchantId);
     if (params?.from) searchParams.set('from', params.from);
     if (params?.to) searchParams.set('to', params.to);
-    return request<ActivityMetrics>(`/api/activity/metrics?${searchParams.toString()}`);
+    return request<ActivityMetrics>(
+      `/api/activity/metrics?${searchParams.toString()}`,
+    );
   },
 };
 
 // Types (aligned with backend contracts)
+export interface DashboardData {
+  merchant: {
+    id: string;
+    displayName: string;
+    role: string;
+    policy: {
+      allowInvestigations: boolean;
+      allowSubmissions: boolean;
+      requireMerchantApproval: boolean;
+    };
+    integration: {
+      connectionStatus: string;
+      disputesReadStatus: string;
+      lastCheckedAt: string | null;
+    };
+  } | null;
+
+  transactions: {
+    total: number;
+    ready: number;
+    incomplete: number;
+    needsReview: number;
+    recent: Array<{
+      id: string;
+      paypalCaptureId: string;
+      paypalOrderId: string;
+      merchantOrderReference: string | null;
+      invoiceId: string | null;
+      status: string;
+      amount: { currencyCode: string; value: string };
+      capturedAt: string;
+      readiness: { status: 'READY' | 'INCOMPLETE' | 'NEEDS_REVIEW' };
+      order: {
+        externalId: string;
+        items: Array<{ sku: string; quantity: number }>;
+      } | null;
+    }>;
+    totalAmount: string;
+  };
+
+  disputes: {
+    total: number;
+    open: number;
+    byStatus: Record<string, number>;
+    byReason: Record<string, number>;
+    recent: Array<{
+      id: string;
+      paypalDisputeId: string;
+      paypalStatus: string;
+      paypalStage: string;
+      paypalReason: string;
+      internalState: string;
+      amount: { currencyCode: string; value: string } | null;
+      disputedAt: string;
+      deadlineAt: string | null;
+      linkStatus: string;
+    }>;
+    totalAmount: string;
+  };
+
+  metrics: {
+    totalEvents: number;
+    eventsByType: Record<string, number>;
+    eventsByOutcome: Record<string, number>;
+    avgDurationMs: number;
+    errorRate: number;
+    topErrors: Array<{ code: string; count: number }>;
+    eventsByTypeDetail: Record<string, number>;
+    eventsByOutcomeDetail: Record<string, number>;
+    avgDurationByType: Record<string, number>;
+  };
+
+  activity: {
+    items: Array<{
+      id: string;
+      timestamp: string;
+      eventType: string;
+      actor: string;
+      action: string;
+      outcome: string;
+      entityType: string;
+      entityId: string;
+      durationMs: number | null;
+      errorCode: string | null;
+    }>;
+    total: number;
+  };
+}
+
 export interface Transaction {
   id: string;
   merchantId: string;
@@ -221,7 +375,10 @@ export interface Transaction {
   createdAt: string;
   sourceEventId: string;
   order: Order | null;
-  orderLink: { status: 'LINKED' | 'UNLINKED' | 'CONFLICT'; reason: string | null };
+  orderLink: {
+    status: 'LINKED' | 'UNLINKED' | 'CONFLICT';
+    reason: string | null;
+  };
   readiness: Readiness;
 }
 
@@ -305,7 +462,21 @@ export interface Dispute {
   linkedTransactionId: string | null;
   linkStatus: 'LINKED' | 'UNLINKED' | 'CONFLICT';
   linkReason: string | null;
-  internalStatus: 'DETECTED' | 'INVESTIGATING' | 'VERIFYING' | 'INCOMPLETE' | 'REJECTED' | 'APPROVED' | 'READY_TO_SUBMIT' | 'AWAITING_MERCHANT_APPROVAL' | 'SUBMITTING' | 'SUBMITTED' | 'SUBMISSION_FAILED' | 'AWAITING_PAYPAL' | 'CLOSED' | 'NEEDS_REVIEW';
+  internalStatus:
+    | 'DETECTED'
+    | 'INVESTIGATING'
+    | 'VERIFYING'
+    | 'INCOMPLETE'
+    | 'REJECTED'
+    | 'APPROVED'
+    | 'READY_TO_SUBMIT'
+    | 'AWAITING_MERCHANT_APPROVAL'
+    | 'SUBMITTING'
+    | 'SUBMITTED'
+    | 'SUBMISSION_FAILED'
+    | 'AWAITING_PAYPAL'
+    | 'CLOSED'
+    | 'NEEDS_REVIEW';
   investigationId: string | null;
   verificationId: string | null;
   submissionId: string | null;
