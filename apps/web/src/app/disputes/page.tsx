@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { PieChartComponent, BarChartComponent, LineChartComponent } from '@/components/charts';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
@@ -167,28 +167,7 @@ export default function DisputesPage() {
               <CardTitle>Disputes by Status</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={statusChartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                      nameKey="name"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {statusChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => [value.toString(), 'disputes']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              <PieChartComponent data={statusChartData} title="Disputes by Status" height={256} />
             </CardContent>
           </Card>
 
@@ -198,28 +177,7 @@ export default function DisputesPage() {
               <CardTitle>Dispute Reasons</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={reasonChartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                      nameKey="name"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {reasonChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => [value.toString(), 'disputes']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              <PieChartComponent data={reasonChartData} title="Dispute Reasons" height={256} />
             </CardContent>
           </Card>
 
@@ -229,28 +187,7 @@ export default function DisputesPage() {
               <CardTitle>PayPal Stages</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={stageChartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                      nameKey="name"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {stageChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => [value.toString(), 'disputes']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              <PieChartComponent data={stageChartData} title="PayPal Stages" height={256} />
             </CardContent>
           </Card>
         </div>
@@ -262,17 +199,14 @@ export default function DisputesPage() {
               <CardTitle>Disputed Amount by Status</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={amountByStatusData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="status" />
-                    <YAxis />
-                    <Tooltip formatter={(value: number) => [formatCurrency(value, 'USD'), 'Amount']} />
-                    <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <BarChartComponent
+                data={amountByStatusData}
+                dataKey="amount"
+                nameKey="status"
+                title="Disputed Amount by Status"
+                height={256}
+                formatter={(value: number) => [formatCurrency(value, 'USD'), 'Amount']}
+              />
             </CardContent>
           </Card>
 
@@ -281,17 +215,14 @@ export default function DisputesPage() {
               <CardTitle>Disputes per Month (Last 6 Months)</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={monthlyDisputesData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip formatter={(value: number) => [value.toString(), 'disputes']} />
-                    <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+              <LineChartComponent
+                data={monthlyDisputesData}
+                xKey="month"
+                yKey="count"
+                title="Disputes per Month (Last 6 Months)"
+                height={256}
+                stroke="#ef4444"
+              />
             </CardContent>
           </Card>
         </div>

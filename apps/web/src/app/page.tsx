@@ -1,15 +1,15 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useTransactions, useDisputes, useMetrics, useMe } from '@/hooks/useApi';
+import { useMe, useTransactions, useDisputes, useMetrics } from '@/hooks/useApi';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { cn, formatCurrency, formatRelativeTime, getReadinessColor, getStatusColor } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { PieChartComponent, BarChartComponent, LineChartComponent } from '@/components/charts';
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 export default function OverviewPage() {
   const { data: me, isLoading: meLoading } = useMe();
@@ -59,7 +59,7 @@ export default function OverviewPage() {
       acc[d.internalStatus] = (acc[d.internalStatus] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-    return Object.entries(statusCounts).map(([name, value], i) => ({ name, value, color: COLORS[i % COLORS.length] }));
+    return Object.entries(statusCounts).map(([name, value], i) => ({ name: name.replace(/_/g, ' '), value, color: COLORS[i % COLORS.length] }));
   }, [disputes]);
 
   const monthlyVolumeData = useMemo(() => {
@@ -147,29 +147,7 @@ export default function OverviewPage() {
               <CardTitle>Transaction Readiness</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={readinessChartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      fill="#8884d8"
-                      paddingAngle={2}
-                      dataKey="value"
-                      nameKey="name"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {readinessChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => [value.toString(), 'transactions']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              <PieChartComponent data={readinessChartData} title="Transaction Readiness" height={256} />
             </CardContent>
           </Card>
 
@@ -179,28 +157,7 @@ export default function OverviewPage() {
               <CardTitle>Disputes by Status</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={disputeStatusData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                      nameKey="name"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {disputeStatusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => [value.toString(), 'disputes']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              <PieChartComponent data={disputeStatusData} title="Disputes by Status" height={256} />
             </CardContent>
           </Card>
 
@@ -210,17 +167,15 @@ export default function OverviewPage() {
               <CardTitle>Volume (Last 6 Months)</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlyVolumeData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip formatter={(value: number) => [formatCurrency(value, 'USD'), 'Volume']} />
-                    <Bar dataKey="volume" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <LineChartComponent
+                data={monthlyVolumeData}
+                xKey="month"
+                yKey="volume"
+                title="Volume (Last 6 Months)"
+                height={256}
+                stroke="#3b82f6"
+                formatter={(value: number) => [formatCurrency(value, 'USD'), 'Volume']}
+              />
             </CardContent>
           </Card>
         </div>

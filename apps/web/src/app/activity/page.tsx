@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts';
+import { PieChartComponent, BarChartComponent, LineChartComponent } from '@/components/charts';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
@@ -189,11 +189,21 @@ export default function ActivityPage() {
               </Select>
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground">From:</label>
-                <Input type="date" value={dateRange.from?.toISOString().split('T')[0] || ''} onChange={(e) => setDateRange({ ...dateRange, from: e.target.value ? new Date(e.target.value) : undefined })} />
+                <input
+                  type="date"
+                  value={dateRange.from?.toISOString().split('T')[0] || ''}
+                  onChange={(e) => setDateRange({ ...dateRange, from: e.target.value ? new Date(e.target.value) : undefined })}
+                  className="w-auto px-2 py-1 border border-input rounded-lg bg-background"
+                />
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground">To:</label>
-                <Input type="date" value={dateRange.to?.toISOString().split('T')[0] || ''} onChange={(e) => setDateRange({ ...dateRange, to: e.target.value ? new Date(e.target.value) : undefined })} />
+                <input
+                  type="date"
+                  value={dateRange.to?.toISOString().split('T')[0] || ''}
+                  onChange={(e) => setDateRange({ ...dateRange, to: e.target.value ? new Date(e.target.value) : undefined })}
+                  className="w-auto px-2 py-1 border border-input rounded-lg bg-background"
+                />
               </div>
               <Button type="submit">Filter</Button>
               <Button type="button" variant="outline" onClick={() => { setTypeFilter('ALL'); setDateRange({}); setPage(1); refetchActivity(); }}>
@@ -210,28 +220,7 @@ export default function ActivityPage() {
               <CardTitle>Events by Type</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={eventsByTypeData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                      nameKey="name"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {eventsByTypeData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => [value.toString(), 'events']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              <PieChartComponent data={eventsByTypeData} title="Events by Type" height={256} />
             </CardContent>
           </Card>
 
@@ -240,28 +229,7 @@ export default function ActivityPage() {
               <CardTitle>Events by Outcome</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={eventsByOutcomeData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                      nameKey="name"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {eventsByOutcomeData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => [value.toString(), 'events']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              <PieChartComponent data={eventsByOutcomeData} title="Events by Outcome" height={256} />
             </CardContent>
           </Card>
 
@@ -270,17 +238,14 @@ export default function ActivityPage() {
               <CardTitle>Events by Actor</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={actorData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="actor" type="category" width={120} />
-                    <Tooltip formatter={(value: number) => [value.toString(), 'events']} />
-                    <Bar dataKey="count" fill="#3b82f6" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <BarChartComponent
+                data={actorData}
+                dataKey="count"
+                nameKey="actor"
+                title="Events by Actor"
+                height={256}
+                layout="vertical"
+              />
             </CardContent>
           </Card>
         </div>
@@ -292,23 +257,14 @@ export default function ActivityPage() {
               <CardTitle>Events Over Time (Last 14 Days)</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={dailyVolumeData}>
-                    <defs>
-                      <linearGradient id="colorEvents" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="day" />
-                    <YAxis />
-                    <Tooltip formatter={(value: number) => [value.toString(), 'events']} />
-                    <Area type="monotone" dataKey="count" stroke="#3b82f6" fill="url(#colorEvents)" strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+              <LineChartComponent
+                data={dailyVolumeData}
+                xKey="day"
+                yKey="count"
+                title="Events Over Time (Last 14 Days)"
+                height={256}
+                type="area"
+              />
             </CardContent>
           </Card>
 
@@ -317,17 +273,14 @@ export default function ActivityPage() {
               <CardTitle>Hourly Distribution (Last 24h)</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={hourlyVolumeData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="hour" type="category" width={80} />
-                    <Tooltip formatter={(value: number) => [value.toString(), 'events']} />
-                    <Bar dataKey="count" fill="#10b981" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <BarChartComponent
+                data={hourlyVolumeData}
+                dataKey="count"
+                nameKey="hour"
+                title="Hourly Distribution (Last 24h)"
+                height={256}
+                layout="vertical"
+              />
             </CardContent>
           </Card>
         </div>
@@ -338,18 +291,15 @@ export default function ActivityPage() {
             <CardTitle>Average Duration by Event Type</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={avgDurationByTypeData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="type" />
-                  <YAxis />
-                  <Tooltip formatter={(value: number) => [`${value}ms`, 'avg duration']} />
-                  <Bar dataKey="avgDuration" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+            <BarChartComponent
+              data={avgDurationByTypeData}
+              dataKey="avgDuration"
+              nameKey="type"
+              title="Average Duration by Event Type"
+              height={256}
+              formatter={(value: number) => [`${value}ms`, 'avg duration']}
+            />
+          </CardContent>
         </Card>
 
         {/* Events Table */}

@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+import { PieChartComponent, BarChartComponent, LineChartComponent } from '@/components/charts';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -188,28 +188,7 @@ export default function TransactionsPage() {
               <CardTitle>Readiness Distribution</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={readinessChartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                      nameKey="name"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {readinessChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => [value.toString(), 'transactions']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              <PieChartComponent data={readinessChartData} title="Readiness Distribution" height={256} />
             </CardContent>
           </Card>
 
@@ -219,28 +198,7 @@ export default function TransactionsPage() {
               <CardTitle>Payment Status</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={statusChartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                      nameKey="name"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {statusChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: number) => [value.toString(), 'transactions']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
+              <PieChartComponent data={statusChartData} title="Payment Status" height={256} />
             </CardContent>
           </Card>
 
@@ -250,17 +208,13 @@ export default function TransactionsPage() {
               <CardTitle>By Currency</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={currencyData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="currency" />
-                    <YAxis />
-                    <Tooltip formatter={(value: number) => [formatCurrency(value, 'USD'), 'Volume']} />
-                    <Bar dataKey="volume" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <BarChartComponent
+                data={currencyData.map((d, i) => ({ name: d.currency, value: d.volume, color: COLORS[i % COLORS.length] }))}
+                dataKey="volume"
+                nameKey="name"
+                title="By Currency"
+                height={256}
+              />
             </CardContent>
           </Card>
         </div>
@@ -271,18 +225,15 @@ export default function TransactionsPage() {
             <CardTitle>Daily Volume (Last 14 Days)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dailyVolumeData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip formatter={(value: number) => [formatCurrency(value, 'USD'), 'Volume']} />
-                  <Line type="monotone" dataKey="volume" stroke="#3b82f6" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+            <LineChartComponent
+              data={dailyVolumeData}
+              xKey="day"
+              yKey="volume"
+              title="Daily Volume (Last 14 Days)"
+              height={256}
+              formatter={(value: number) => [formatCurrency(value, 'USD'), 'Volume']}
+            />
+          </CardContent>
         </Card>
 
         {/* Filters */}
@@ -311,11 +262,21 @@ export default function TransactionsPage() {
               </Select>
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground">From:</label>
-                <Input type="date" value={dateRange.from?.toISOString().split('T')[0] || ''} onChange={(e) => setDateRange({ ...dateRange, from: e.target.value ? new Date(e.target.value) : undefined })} />
+                <input
+                  type="date"
+                  value={dateRange.from?.toISOString().split('T')[0] || ''}
+                  onChange={(e) => setDateRange({ ...dateRange, from: e.target.value ? new Date(e.target.value) : undefined })}
+                  className="w-auto px-2 py-1 border border-input rounded-lg bg-background"
+                />
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-sm text-muted-foreground">To:</label>
-                <Input type="date" value={dateRange.to?.toISOString().split('T')[0] || ''} onChange={(e) => setDateRange({ ...dateRange, to: e.target.value ? new Date(e.target.value) : undefined })} />
+                <input
+                  type="date"
+                  value={dateRange.to?.toISOString().split('T')[0] || ''}
+                  onChange={(e) => setDateRange({ ...dateRange, to: e.target.value ? new Date(e.target.value) : undefined })}
+                  className="w-auto px-2 py-1 border border-input rounded-lg bg-background"
+                />
               </div>
               <Button type="submit">Filter</Button>
               <Button type="button" variant="outline" onClick={() => { setSearch(''); setStatusFilter('ALL'); setDateRange({}); setPage(1); refetch(); }}>
