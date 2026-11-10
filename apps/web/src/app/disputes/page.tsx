@@ -200,9 +200,9 @@ export default function DisputesPage() {
             </CardHeader>
             <CardContent>
               <BarChartComponent
-                data={amountByStatusData}
-                dataKey="amount"
-                nameKey="status"
+                data={amountByStatusData.map(d => ({ name: d.status, value: d.amount, color: d.color }))}
+                dataKey="value"
+                nameKey="name"
                 title="Disputed Amount by Status"
                 height={256}
                 formatter={(value: number) => [formatCurrency(value, 'USD'), 'Amount']}
