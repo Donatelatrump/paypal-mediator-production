@@ -281,9 +281,9 @@ export default function ActivityPage() {
             </CardHeader>
             <CardContent>
               <BarChartComponent
-                data={hourlyVolumeData}
-                dataKey="count"
-                nameKey="hour"
+                data={hourlyVolumeData.map(d => ({ name: d.hour, value: d.count, color: COLORS[0] }))}
+                dataKey="value"
+                nameKey="name"
                 title="Hourly Distribution (Last 24h)"
                 height={256}
                 layout="vertical"
