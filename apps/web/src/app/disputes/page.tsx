@@ -103,16 +103,15 @@ export default function DisputesPage() {
                                 Approve
                               </Button>
                             )}
-                            {(dispute.merchantApproval === true || !dispute.policy?.requireMerchantApproval) &&
-                              dispute.internalStatus !== 'SUBMITTED' && dispute.internalStatus !== 'SUBMITTING' && (
-                                <Button
-                                  size="sm"
-                                  onClick={() => submitMutation.mutate(dispute.id)}
-                                  disabled={submitMutation.isPending}
-                                >
-                                  Submit Evidence
-                                </Button>
-                              )}
+                            {(dispute.merchantApproval === true || !dispute.policy?.requireMerchantApproval) && (
+                              <Button
+                                size="sm"
+                                onClick={() => submitMutation.mutate(dispute.id)}
+                                disabled={submitMutation.isPending}
+                              >
+                                Submit Evidence
+                              </Button>
+                            )}
                           </>
                         ) : null}
                       </div>

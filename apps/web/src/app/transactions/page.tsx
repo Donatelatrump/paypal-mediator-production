@@ -91,7 +91,7 @@ export default function TransactionsPage() {
                   className="w-full pl-10 pr-4 py-2 border border-input rounded-lg bg-background"
                 />
               </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as 'ALL' | 'READY' | 'INCOMPLETE' | 'NEEDS_REVIEW')}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>

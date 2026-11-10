@@ -309,6 +309,11 @@ export interface Dispute {
   verificationId: string | null;
   submissionId: string | null;
   merchantApproval: boolean | null;
+  policy?: {
+    allowInvestigations: boolean;
+    allowSubmissions: boolean;
+    requireMerchantApproval: boolean;
+  };
   createdAt: string;
   updatedAt: string;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, createContext, useContext, ReactNode } from 'react';
+import { useState, useCallback, useContext, createContext, ReactNode, useEffect } from 'react';
 import * as ToastPrimitives from '@radix-ui/react-toast';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,43 @@ interface ToastContextType {
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
+
+const ToastViewport = () => {
+  const { toasts } = useContext(ToastContext)!;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  return (
+    <ToastPrimitives.Viewport className="fixed bottom-0 right-0 flex flex-col p-4 sm:bottom-4 sm:right-4 sm:flex-row md:bottom-4 gap-2 z-50 w-full sm:max-w-sm">
+      {toasts.map((toast) => (
+        <ToastPrimitives.Root
+          key={toast.id}
+          className={cn(
+            'group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-lg border p-4 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full',
+            toast.variant === 'destructive'
+              ? 'border-destructive bg-destructive text-destructive-foreground'
+              : 'border-border bg-background text-foreground'
+          )}
+        >
+          <div className="grid gap-1">
+            <ToastPrimitives.Title className="text-sm font-semibold">{toast.title}</ToastPrimitives.Title>
+            {toast.description && (
+              <ToastPrimitives.Description className="text-sm opacity-90">{toast.description}</ToastPrimitives.Description>
+            )}
+          </div>
+          <ToastPrimitives.Close className="absolute right-2 top-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            <X className="h-4 w-4" />
+          </ToastPrimitives.Close>
+        </ToastPrimitives.Root>
+      ))}
+    </ToastPrimitives.Viewport>
+  );
+};
 
 const ToastProvider = ({ children }: { children: ReactNode }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -42,32 +79,6 @@ const ToastProvider = ({ children }: { children: ReactNode }) => {
     </ToastContext.Provider>
   );
 };
-
-const ToastViewport = () => (
-  <ToastPrimitives.Viewport className="fixed bottom-0 right-0 flex flex-col p-4 sm:bottom-4 sm:right-4 sm:flex-row md:bottom-4 gap-2 z-50 w-full sm:max-w-sm">
-    {toasts.map((toast) => (
-      <ToastPrimitives.Root
-        key={toast.id}
-        className={cn(
-          'group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-lg border p-4 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full',
-          toast.variant === 'destructive'
-            ? 'border-destructive bg-destructive text-destructive-foreground'
-            : 'border-border bg-background text-foreground'
-        )}
-      >
-        <div className="grid gap-1">
-          <ToastPrimitives.Title className="text-sm font-semibold">{toast.title}</ToastPrimitives.Title>
-          {toast.description && (
-            <ToastPrimitives.Description className="text-sm opacity-90">{toast.description}</ToastPrimitives.Description>
-          )}
-        </div>
-        <ToastPrimitives.Close className="absolute right-2 top-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-          <X className="h-4 w-4" />
-        </ToastPrimitives.Close>
-      </ToastPrimitives.Root>
-    ))}
-  </ToastPrimitives.Viewport>
-);
 
 export function useToast() {
   const context = useContext(ToastContext);
