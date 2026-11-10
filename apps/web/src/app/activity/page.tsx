@@ -299,9 +299,9 @@ export default function ActivityPage() {
           </CardHeader>
           <CardContent>
             <BarChartComponent
-              data={avgDurationByTypeData}
-              dataKey="avgDuration"
-              nameKey="type"
+              data={avgDurationByTypeData.map(d => ({ name: d.type, value: d.avgDuration, color: COLORS[0] }))}
+              dataKey="value"
+              nameKey="name"
               title="Average Duration by Event Type"
               height={256}
               formatter={(value: number) => [`${value}ms`, 'avg duration']}
