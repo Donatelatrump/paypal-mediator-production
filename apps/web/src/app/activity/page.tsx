@@ -111,7 +111,7 @@ export default function ActivityPage() {
     refetchActivity();
   };
 
-  const eventTypes = [...new Set(activityData?.items.map(e => e.eventType) || [])].sort();
+  const eventTypes = Array.from(new Set(activityData?.items.map(e => e.eventType) || [])).sort();
 
   return (
     <DashboardLayout>
