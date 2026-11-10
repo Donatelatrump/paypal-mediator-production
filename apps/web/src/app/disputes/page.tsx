@@ -74,7 +74,7 @@ export default function DisputesPage() {
 
   const monthlyDisputesData = useMemo(() => {
     const monthly = disputes.reduce((acc, d) => {
-      const month = new Date(d.disputedAt).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      const month = new Date(d.createTime).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
       acc[month] = (acc[month] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
