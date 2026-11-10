@@ -1,6 +1,6 @@
 'use client';
 
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, defs, linearGradient, stop } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area } from 'recharts';
 
 interface LineChartProps {
   data: Array<Record<string, unknown>>;
@@ -25,12 +25,12 @@ export function LineChartComponent({ data, xKey, yKey, title, height = 300, stro
       <ResponsiveContainer width="100%" height="100%">
         {type === 'area' ? (
           <AreaChart data={data}>
-            <defs>
-              <linearGradient id="colorArea" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={stroke} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={stroke} stopOpacity={0} />
-              </linearGradient>
-            </defs>
+            <svg:defs>
+              <svg:linearGradient id="colorArea" x1="0" y1="0" x2="0" y2="1">
+                <svg:stop offset="5%" stopColor={stroke} stopOpacity={0.3} />
+                <svg:stop offset="95%" stopColor={stroke} stopOpacity={0} />
+              </svg:linearGradient>
+            </svg:defs>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey={xKey} />
             <YAxis />
