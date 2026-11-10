@@ -233,7 +233,7 @@ export default function TransactionsPage() {
               yKey="volume"
               title="Daily Volume (Last 14 Days)"
               height={256}
-              formatter={(value: number) => [formatCurrency(value, 'USD'), 'Volume']}
+              formatter={(value: number) => [formatCurrency(value.toString(), 'USD'), 'Volume']}
             />
           </CardContent>
         </Card>
