@@ -301,6 +301,7 @@ export interface Dispute {
   disputeOutcome: string | null;
   createTime: string;
   updateTime: string;
+  deadlineAt: string | null;
   linkedTransactionId: string | null;
   linkStatus: 'LINKED' | 'UNLINKED' | 'CONFLICT';
   linkReason: string | null;
