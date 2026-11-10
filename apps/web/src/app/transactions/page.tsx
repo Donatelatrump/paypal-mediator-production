@@ -169,9 +169,11 @@ export default function TransactionsPage() {
             <CardContent>
               <div className="text-2xl font-bold">
                 {formatCurrency(
-                  filteredTransactions.length
-                    ? filteredTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount.value), 0) / filteredTransactions.length
-                    : 0,
+                  (
+                    filteredTransactions.length
+                      ? filteredTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount.value), 0) / filteredTransactions.length
+                      : 0
+                  ).toString(),
                   'USD'
                 )}
               </div>
