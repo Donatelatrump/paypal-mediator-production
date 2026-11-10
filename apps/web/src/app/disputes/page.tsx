@@ -205,7 +205,7 @@ export default function DisputesPage() {
                 nameKey="name"
                 title="Disputed Amount by Status"
                 height={256}
-                formatter={(value: number) => [formatCurrency(value, 'USD'), 'Amount']}
+                formatter={(value: number) => [formatCurrency(value.toString(), 'USD'), 'Amount']}
               />
             </CardContent>
           </Card>
