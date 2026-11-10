@@ -132,7 +132,7 @@ export default function DisputesPage() {
               <CardTitle className="text-sm font-medium">Total Disputed</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalDisputedAmount, 'USD')}</div>
+              <div className="text-2xl font-bold">{formatCurrency(totalDisputedAmount.toString(), 'USD')}</div>
             </CardContent>
           </Card>
 
@@ -142,7 +142,7 @@ export default function DisputesPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {formatCurrency(disputes.length ? totalDisputedAmount / disputes.length : 0, 'USD')}
+                {formatCurrency((disputes.length ? totalDisputedAmount / disputes.length : 0).toString(), 'USD')}
               </div>
             </CardContent>
           </Card>
