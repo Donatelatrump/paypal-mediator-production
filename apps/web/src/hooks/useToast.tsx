@@ -21,14 +21,16 @@ interface ToastContextType {
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
 
 const ToastViewport = () => {
-  const { toasts } = useContext(ToastContext)!;
+  const context = useContext(ToastContext);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  if (!mounted) return null;
+  if (!mounted || !context) return null;
+
+  const { toasts } = context;
 
   return (
     <ToastPrimitives.Viewport className="fixed bottom-0 right-0 flex flex-col p-4 sm:bottom-4 sm:right-4 sm:flex-row md:bottom-4 gap-2 z-50 w-full sm:max-w-sm">
