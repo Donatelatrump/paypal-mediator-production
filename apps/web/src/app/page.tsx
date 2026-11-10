@@ -174,7 +174,7 @@ export default function OverviewPage() {
                 title="Volume (Last 6 Months)"
                 height={256}
                 stroke="#3b82f6"
-                formatter={(value: number) => [formatCurrency(value, 'USD'), 'Volume']}
+                formatter={(value: number) => [formatCurrency(value.toString(), 'USD'), 'Volume']}
               />
             </CardContent>
           </Card>
