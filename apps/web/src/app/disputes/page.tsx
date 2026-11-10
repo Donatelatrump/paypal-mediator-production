@@ -1,11 +1,16 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useDisputes, useInvestigateDispute, useApproveDispute, useSubmitDispute } from '@/hooks/useApi';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { cn, formatCurrency, formatDate, getStatusColor, getInternalStatusLabel } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 export default function DisputesPage() {
   const { data: disputesData, isLoading, error, refetch } = useDisputes();
@@ -18,8 +23,10 @@ export default function DisputesPage() {
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="space-y-6 p-6">
+          <Skeleton className="h-8 w-1/4" />
+          <Card><CardContent className="py-4"><Skeleton className="h-10 w-1/3" /></CardContent></Card>
+          <Card><CardContent className="py-4"><Skeleton className="h-64 w-full" /></CardContent></Card>
         </div>
       </DashboardLayout>
     );
@@ -40,9 +47,58 @@ export default function DisputesPage() {
     );
   }
 
+  // Chart data
+  const statusChartData = useMemo(() => {
+    const counts = disputes.reduce((acc, d) => {
+      acc[d.internalStatus] = (acc[d.internalStatus] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(counts).map(([name, value], i) => ({ name: getInternalStatusLabel(name), value, color: COLORS[i % COLORS.length] }));
+  }, [disputes]);
+
+  const reasonChartData = useMemo(() => {
+    const counts = disputes.reduce((acc, d) => {
+      acc[d.reason] = (acc[d.reason] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(counts).map(([name, value], i) => ({ name, value, color: COLORS[i % COLORS.length] }));
+  }, [disputes]);
+
+  const stageChartData = useMemo(() => {
+    const counts = disputes.reduce((acc, d) => {
+      acc[d.stage] = (acc[d.stage] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(counts).map(([name, value], i) => ({ name, value, color: COLORS[i % COLORS.length] }));
+  }, [disputes]);
+
+  const monthlyDisputesData = useMemo(() => {
+    const monthly = disputes.reduce((acc, d) => {
+      const month = new Date(d.disputedAt).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      acc[month] = (acc[month] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(monthly).slice(-6).map(([month, count]) => ({ month, count }));
+  }, [disputes]);
+
+  const amountByStatusData = useMemo(() => {
+    const amounts = disputes.reduce((acc, d) => {
+      const status = getInternalStatusLabel(d.internalStatus);
+      acc[status] = (acc[status] || 0) + parseFloat(d.amount.value);
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(amounts).map(([status, amount], i) => ({ status, amount, color: COLORS[i % COLORS.length] }));
+  }, [disputes]);
+
+  const openDisputes = disputes.filter(
+    (d) => !['CLOSED', 'SUBMITTED'].includes(d.internalStatus)
+  ).length;
+
+  const totalDisputedAmount = disputes.reduce((sum, d) => sum + parseFloat(d.amount.value), 0);
+
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 p-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Disputes</h1>
           <p className="text-muted-foreground">
@@ -50,6 +106,197 @@ export default function DisputesPage() {
           </p>
         </div>
 
+        {/* Stats Grid */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Disputes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{disputes.length}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Open Disputes</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-destructive">{openDisputes}</div>
+              <p className="text-xs text-muted-foreground">Require attention</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Disputed</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCurrency(totalDisputedAmount, 'USD')}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Avg Dispute Value</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(disputes.length ? totalDisputedAmount / disputes.length : 0, 'USD')}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Submitted</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {disputes.filter(d => d.internalStatus === 'SUBMITTED' || d.internalStatus === 'CLOSED').length}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts Row */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {/* Status Distribution */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Disputes by Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={statusChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                      nameKey="name"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {statusChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => [value.toString(), 'disputes']} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Dispute Reasons */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Dispute Reasons</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={reasonChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                      nameKey="name"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {reasonChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => [value.toString(), 'disputes']} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* PayPal Stages */}
+          <Card>
+            <CardHeader>
+              <CardTitle>PayPal Stages</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={stageChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                      nameKey="name"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {stageChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => [value.toString(), 'disputes']} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Amount by Status & Monthly Trend */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Disputed Amount by Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={amountByStatusData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="status" />
+                    <YAxis />
+                    <Tooltip formatter={(value: number) => [formatCurrency(value, 'USD'), 'Amount']} />
+                    <Bar dataKey="amount" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Disputes per Month (Last 6 Months)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={monthlyDisputesData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip formatter={(value: number) => [value.toString(), 'disputes']} />
+                    <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Disputes List */}
         <Card>
           <CardHeader>
             <CardTitle>{disputes.length} disputes</CardTitle>
@@ -73,12 +320,18 @@ export default function DisputesPage() {
                             {getInternalStatusLabel(dispute.internalStatus)}
                           </Badge>
                           <Badge className={getStatusColor(dispute.linkStatus)}>Link: {dispute.linkStatus}</Badge>
+                          <Badge variant="secondary">{dispute.stage}</Badge>
                         </div>
                         <div className="mt-1 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                           <span>{formatCurrency(dispute.amount.value, dispute.amount.currencyCode)}</span>
                           <span>{dispute.reason}</span>
                           <span>Created: {formatDate(dispute.createTime)}</span>
                           <span>Stage: {dispute.stage}</span>
+                          {dispute.deadlineAt && (
+                            <span className={new Date(dispute.deadlineAt) < new Date() ? 'text-destructive' : 'text-amber-600'}>
+                              Deadline: {formatDate(dispute.deadlineAt)}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

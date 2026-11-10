@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useTransactions, useRefreshEvidence } from '@/hooks/useApi';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { cn, formatCurrency, formatDate, getReadinessColor, getStatusColor } from '@/lib/utils';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -15,12 +16,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
 export default function TransactionsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'READY' | 'INCOMPLETE' | 'NEEDS_REVIEW'>('ALL');
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
 
   const { data, isLoading, error, refetch } = useTransactions({
     page,
@@ -30,10 +35,14 @@ export default function TransactionsPage() {
 
   const refreshMutation = useRefreshEvidence();
 
-  const filteredTransactions = data?.items.filter((tx) => {
-    if (statusFilter === 'ALL') return true;
-    return tx.readiness.status === statusFilter;
-  }) || [];
+  const filteredTransactions = useMemo(() => {
+    return data?.items.filter((tx) => {
+      if (statusFilter !== 'ALL' && tx.readiness.status !== statusFilter) return false;
+      if (dateRange.from && new Date(tx.capturedAt) < dateRange.from) return false;
+      if (dateRange.to && new Date(tx.capturedAt) > dateRange.to) return false;
+      return true;
+    }) || [];
+  }, [data?.items, statusFilter, dateRange]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,11 +50,48 @@ export default function TransactionsPage() {
     refetch();
   };
 
+  // Chart data
+  const readinessChartData = useMemo(() => {
+    const counts = filteredTransactions.reduce((acc, tx) => {
+      acc[tx.readiness.status] = (acc[tx.readiness.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(counts).map(([name, value], i) => ({ name, value, color: COLORS[i % COLORS.length] }));
+  }, [filteredTransactions]);
+
+  const statusChartData = useMemo(() => {
+    const counts = filteredTransactions.reduce((acc, tx) => {
+      acc[tx.status] = (acc[tx.status] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(counts).map(([name, value], i) => ({ name, value, color: COLORS[i % COLORS.length] }));
+  }, [filteredTransactions]);
+
+  const dailyVolumeData = useMemo(() => {
+    const daily = filteredTransactions.reduce((acc, tx) => {
+      const day = new Date(tx.capturedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      acc[day] = (acc[day] || 0) + parseFloat(tx.amount.value);
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(daily).slice(-14).map(([day, volume]) => ({ day, volume }));
+  }, [filteredTransactions]);
+
+  const currencyData = useMemo(() => {
+    const curr = filteredTransactions.reduce((acc, tx) => {
+      acc[tx.amount.currencyCode] = (acc[tx.amount.currencyCode] || 0) + parseFloat(tx.amount.value);
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(curr).map(([currency, volume], i) => ({ currency, volume, color: COLORS[i % COLORS.length] }));
+  }, [filteredTransactions]);
+
   if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="space-y-6 p-6">
+          <Skeleton className="h-8 w-1/4" />
+          <Card><CardContent className="py-4"><Skeleton className="h-10 w-1/3" /></CardContent></Card>
+          <Card><CardContent className="py-4"><Skeleton className="h-64 w-full" /></CardContent></Card>
+          <Card><CardContent className="py-4"><Skeleton className="h-64 w-full" /></CardContent></Card>
         </div>
       </DashboardLayout>
     );
@@ -68,7 +114,7 @@ export default function TransactionsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Transactions</h1>
@@ -77,6 +123,167 @@ export default function TransactionsPage() {
             </p>
           </div>
         </div>
+
+        {/* Stats Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Transactions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{data?.total || 0}</div>
+              <p className="text-xs text-muted-foreground">Showing {filteredTransactions.length} filtered</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Volume</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(
+                  filteredTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount.value), 0),
+                  'USD'
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">Filtered transactions</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Ready Rate</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {filteredTransactions.length
+                  ? Math.round((filteredTransactions.filter(t => t.readiness.status === 'READY').length / filteredTransactions.length) * 100)
+                  : 0}%
+              </div>
+              <p className="text-xs text-muted-foreground">Dispute ready</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Avg Transaction</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {formatCurrency(
+                  filteredTransactions.length
+                    ? filteredTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount.value), 0) / filteredTransactions.length
+                    : 0,
+                  'USD'
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">Average value</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts Row */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {/* Readiness Distribution */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Readiness Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={readinessChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                      nameKey="name"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {readinessChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => [value.toString(), 'transactions']} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Status Distribution */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Payment Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={statusChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                      nameKey="name"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {statusChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => [value.toString(), 'transactions']} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Currency Distribution */}
+          <Card>
+            <CardHeader>
+              <CardTitle>By Currency</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={currencyData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="currency" />
+                    <YAxis />
+                    <Tooltip formatter={(value: number) => [formatCurrency(value, 'USD'), 'Volume']} />
+                    <Bar dataKey="volume" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Daily Volume Trend */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Daily Volume (Last 14 Days)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={dailyVolumeData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" />
+                  <YAxis />
+                  <Tooltip formatter={(value: number) => [formatCurrency(value, 'USD'), 'Volume']} />
+                  <Line type="monotone" dataKey="volume" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </Card>
 
         {/* Filters */}
         <Card>
@@ -102,7 +309,18 @@ export default function TransactionsPage() {
                   <SelectItem value="NEEDS_REVIEW">Needs review</SelectItem>
                 </SelectContent>
               </Select>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-muted-foreground">From:</label>
+                <Input type="date" value={dateRange.from?.toISOString().split('T')[0] || ''} onChange={(e) => setDateRange({ ...dateRange, from: e.target.value ? new Date(e.target.value) : undefined })} />
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-muted-foreground">To:</label>
+                <Input type="date" value={dateRange.to?.toISOString().split('T')[0] || ''} onChange={(e) => setDateRange({ ...dateRange, to: e.target.value ? new Date(e.target.value) : undefined })} />
+              </div>
               <Button type="submit">Filter</Button>
+              <Button type="button" variant="outline" onClick={() => { setSearch(''); setStatusFilter('ALL'); setDateRange({}); setPage(1); refetch(); }}>
+                Clear
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -132,6 +350,7 @@ export default function TransactionsPage() {
                       <th className="text-left p-4 font-medium">Order</th>
                       <th className="text-left p-4 font-medium">Payment Received</th>
                       <th className="text-left p-4 font-medium">Amount</th>
+                      <th className="text-left p-4 font-medium">Currency</th>
                       <th className="text-left p-4 font-medium">Payment Status</th>
                       <th className="text-left p-4 font-medium">Readiness</th>
                       <th className="text-left p-4 font-medium">Actions</th>
@@ -155,6 +374,9 @@ export default function TransactionsPage() {
                         <td className="p-4">{formatDate(tx.capturedAt)}</td>
                         <td className="p-4 font-medium">
                           {formatCurrency(tx.amount.value, tx.amount.currencyCode)}
+                        </td>
+                        <td className="p-4">
+                          <Badge variant="secondary">{tx.amount.currencyCode}</Badge>
                         </td>
                         <td className="p-4">
                           <Badge className={getStatusColor(tx.status)}>{tx.status}</Badge>

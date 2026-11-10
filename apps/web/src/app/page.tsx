@@ -1,22 +1,36 @@
 'use client';
 
-import { useMe, useTransactions, useDisputes, useMetrics } from '@/hooks/useApi';
+import { useMemo } from 'react';
+import { useTransactions, useDisputes, useMetrics, useMe } from '@/hooks/useApi';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { cn, formatCurrency, formatRelativeTime, getReadinessColor, getStatusColor } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
+
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function OverviewPage() {
   const { data: me, isLoading: meLoading } = useMe();
-  const { data: transactionsData, isLoading: txLoading } = useTransactions({ pageSize: 5 });
+  const { data: transactionsData, isLoading: txLoading } = useTransactions({ pageSize: 10 });
   const { data: disputesData, isLoading: dispLoading } = useDisputes();
   const { data: metrics, isLoading: metricsLoading } = useMetrics();
 
   if (meLoading || txLoading || dispLoading || metricsLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="space-y-6 p-6">
+          <Skeleton className="h-8 w-1/4" />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i}><CardContent className="py-6"><Skeleton className="h-8 w-1/2" /><Skeleton className="h-4 w-3/4 mt-2" /></CardContent></Card>
+            ))}
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+            <div className="md:col-span-4 lg:col-span-4"><Card><CardContent className="py-6"><Skeleton className="h-64 w-full" /></CardContent></Card></div>
+            <div className="md:col-span-2 lg:col-span-3"><Card><CardContent className="py-6"><Skeleton className="h-64 w-full" /></CardContent></Card></div>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -33,9 +47,33 @@ export default function OverviewPage() {
     (d) => !['CLOSED', 'SUBMITTED'].includes(d.internalStatus)
   ).length;
 
+  // Charts data
+  const readinessChartData = useMemo(() => [
+    { name: 'Ready', value: readyCount, color: '#10b981' },
+    { name: 'Incomplete', value: incompleteCount, color: '#f59e0b' },
+    { name: 'Needs Review', value: needsReviewCount, color: '#ef4444' },
+  ].filter(d => d.value > 0), [readyCount, incompleteCount, needsReviewCount]);
+
+  const disputeStatusData = useMemo(() => {
+    const statusCounts = disputes.reduce((acc, d) => {
+      acc[d.internalStatus] = (acc[d.internalStatus] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(statusCounts).map(([name, value], i) => ({ name, value, color: COLORS[i % COLORS.length] }));
+  }, [disputes]);
+
+  const monthlyVolumeData = useMemo(() => {
+    const months = transactions.reduce((acc, tx) => {
+      const month = new Date(tx.capturedAt).toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      acc[month] = (acc[month] || 0) + parseFloat(tx.amount.value);
+      return acc;
+    }, {} as Record<string, number>);
+    return Object.entries(months).slice(-6).map(([month, volume]) => ({ month, volume }));
+  }, [transactions]);
+
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 p-6">
         {/* Header */}
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Overview</h1>
@@ -97,6 +135,92 @@ export default function OverviewPage() {
               <p className="text-xs text-muted-foreground mt-1">
                 Last checked: {me?.integration?.lastCheckedAt ? formatRelativeTime(me.integration.lastCheckedAt) : 'Never'}
               </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Charts Row */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {/* Readiness Distribution */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Transaction Readiness</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={readinessChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      fill="#8884d8"
+                      paddingAngle={2}
+                      dataKey="value"
+                      nameKey="name"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {readinessChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => [value.toString(), 'transactions']} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Dispute Status Distribution */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Disputes by Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={disputeStatusData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                      nameKey="name"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {disputeStatusData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => [value.toString(), 'disputes']} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Monthly Volume */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Volume (Last 6 Months)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={monthlyVolumeData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip formatter={(value: number) => [formatCurrency(value, 'USD'), 'Volume']} />
+                    <Bar dataKey="volume" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
         </div>

@@ -54,6 +54,9 @@ model Merchant {
   disputes                Dispute[]
   submissions             Submission[]
   subscriptions           Subscription[]
+  erpConnections          ErpConnection[]
+  externalRecords         ExternalRecord[]
+  transactionLinks        TransactionLink[]
 
   @@map("merchants")
 }
@@ -537,6 +540,7 @@ model ExternalRecord {
 
   merchant    Merchant      @relation(fields: [merchantId], references: [id], onDelete: Restrict)
   connection  ErpConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  transactionLinks TransactionLink[]
 
   @@unique([connectionId, recordType, externalId])
   @@index([merchantId, recordType, externalId])
