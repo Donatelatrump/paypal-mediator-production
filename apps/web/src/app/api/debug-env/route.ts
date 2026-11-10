@@ -7,5 +7,7 @@ export async function GET() {
     NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'NOT SET',
     NODE_ENV: process.env.NODE_ENV || 'NOT SET',
     VERCEL_ENV: process.env.VERCEL_ENV || 'NOT SET',
+    // Force new deployment
+    DEPLOYMENT_TRIGGER: '2026-11-10-config-fix',
   });
 }
