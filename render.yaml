@@ -1,0 +1,91 @@
+services:
+  - type: web
+    name: resolve-ai-api
+    runtime: node
+    plan: free
+    region: virginia
+    branch: main
+    rootDir: apps/api
+    buildCommand: >-
+      npx --yes pnpm@10.34.9 install --frozen-lockfile --prod=false &&
+      npx --yes pnpm@10.34.9 db:generate &&
+      npx --yes pnpm@10.34.9 build
+    startCommand: npm run start:render
+    healthCheckPath: /api/health/ready
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: '24'
+      - key: SWAGGER_ENABLED
+        value: 'false'
+      - key: PAYPAL_ENV
+        value: sandbox
+      - key: TRANSACTION_WORKER_ENABLED
+        value: 'true'
+      - key: DB_CONNECTION_TIMEOUT_MS
+        value: '10000'
+      - key: PAYPAL_TIMEOUT_MS
+        value: '10000'
+      - key: CORS_ORIGIN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: EVIDENCE_BUCKET
+        value: private-evidence
+      - key: MERCHANT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: AI_PROVIDER
+        value: nvidia
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: NVIDIA_MODEL
+        value: nvidia/nemotron-3.5-super-vl-120b-a12b
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        sync: false
+      - key: INVESTIGATOR_MAX_STEPS
+        value: '8'
+      - key: INVESTIGATOR_TIMEOUT_MS
+        value: '60000'
+      - key: MAX_INVESTIGATION_ROUNDS
+        value: '2'
+
+  # Frontend can be deployed to Vercel (recommended) or as a static site on Render
+  # Uncomment below to deploy frontend on Render as a static site
+  # - type: web
+  #     name: resolve-ai-web
+  #     runtime: static
+  #     plan: free
+  #     region: virginia
+  #     branch: main
+  #     rootDir: apps/web
+  #     buildCommand: >-
+  #       npx --yes pnpm@10.34.9 install --frozen-lockfile --prod=false &&
+  #       npx --yes pnpm@10.34.9 build
+  #     staticPublishPath: ./out
+  #     envVars:
+  #       - key: NEXT_PUBLIC_API_BASE_URL
+  #         value: https://resolve-ai-api-ybmj.onrender.com/api
+  #       - key: NEXT_PUBLIC_SUPABASE_URL
+  #         sync: false
+  #       - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+  #         sync: false
+  #     routes:
+  #       - type: rewrite
+  #         source: /api/backend/*
+  #         destination: https://resolve-ai-api-ybmj.onrender.com/api/*

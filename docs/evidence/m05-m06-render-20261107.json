@@ -1,0 +1,79 @@
+{
+  "sourceCommit": "f4be53458be9a8de4594036521b868a73d81580f",
+  "pullRequest": "https://github.com/paypal-mediator/paypal-mediator-backend/pull/14",
+  "ci": "https://github.com/paypal-mediator/paypal-mediator-backend/actions/runs/42352200326",
+  "ciResult": "success",
+  "serviceId": "srv-dbmo0e6c6qcc73e1u8r0",
+  "renderDeployId": "dep-dbndf99srm7s7394j3dg",
+  "renderDeployStatus": "Live",
+  "renderDeployUrl": "https://dashboard.render.com/web/srv-dbmo0e6c6qcc73e1u8r0/deploys/dep-dbndf99srm7s7394j3dg",
+  "deployment": "Render deployment from main confirmed in Opera GX and public API",
+  "configuration": {
+    "AI_PROVIDER": "nvidia",
+    "NVIDIA_MODEL": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "NVIDIA_API_KEY": "configured from existing local .env through authorized Opera GX CDP; secret value omitted"
+  },
+  "verificationScope": "Read and idempotent replay of existing real M05/M06 runs, no new model inference or charge; original merchant policies restored",
+  "verification": {
+    "checkedAt": "2026-11-07T07:48:47.456Z",
+    "api": "https://resolve-ai-api-ybmj.onrender.com/api",
+    "transactionId": "b62b4f9e-2f1b-4daf-a1f4-63e9e6cf6b9a",
+    "steps": {
+      "m01": {
+        "http": 200,
+        "role": "ADMIN",
+        "policy": {
+          "allowInvestigations": false,
+          "allowSubmissions": false,
+          "requireMerchantApproval": true
+        }
+      },
+      "readiness": {
+        "http": 200,
+        "status": "ready"
+      },
+      "m03": {
+        "http": 200,
+        "captureId": "9MX67512MD686194C",
+        "readiness": "INCOMPLETE"
+      },
+      "m05Read": {
+        "http": 200,
+        "status": "COMPLETED",
+        "promptVersion": "m05-inr-v1.2"
+      },
+      "m06Read": {
+        "http": 200,
+        "status": "COMPLETED",
+        "verdict": "INCOMPLETE",
+        "promptVersion": "m06-inr-v2.1",
+        "stale": false,
+        "submissionAuthorized": false,
+        "dimensions": 8
+      },
+      "m06Unauthorized": {
+        "http": 401,
+        "code": "UNAUTHENTICATED"
+      },
+      "m05IdempotentRuntime": {
+        "http": 201,
+        "sameId": true,
+        "status": "COMPLETED"
+      },
+      "m06IdempotentRuntime": {
+        "http": 201,
+        "sameId": true,
+        "status": "COMPLETED"
+      },
+      "policyRestored": {
+        "http": 200,
+        "policy": {
+          "allowInvestigations": false,
+          "allowSubmissions": false,
+          "requireMerchantApproval": true
+        }
+      }
+    }
+  },
+  "previousFailure": "Before environment configuration both POST routes returned HTTP 503 INVESTIGATOR_NOT_CONFIGURED; after Save and deploy both returned 201 with the original run IDs"
+}

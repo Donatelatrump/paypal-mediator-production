@@ -1,0 +1,564 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// M09 keeps historical identity references without cascading deletions.
+model AuditEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  merchantId    String   @map("merchant_id") @db.Uuid
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  actorKind     String   @default("USER") @map("actor_kind")
+  module        String   @default("M01")
+  action        String   @default("SETTINGS_UPDATED")
+  outcome       String   @default("SUCCEEDED")
+  transactionId String?  @map("transaction_id") @db.Uuid
+  resourceType  String   @default("MERCHANT") @map("resource_type")
+  resourceId    String?  @map("resource_id") @db.Uuid
+  durationMs    Int?     @map("duration_ms")
+  inputTokens   Int?     @map("input_tokens")
+  outputTokens  Int?     @map("output_tokens")
+  record        Json
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([merchantId, createdAt, id])
+  @@index([merchantId, transactionId, createdAt])
+  @@index([merchantId, resourceId, createdAt])
+  @@map("audit_events")
+}
+
+// Minimal merchant identity anchor. M01 will own its integration and authorization.
+model Merchant {
+  id                      String               @id @default(uuid()) @db.Uuid
+  displayName             String               @map("display_name")
+  createdAt               DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  allowInvestigations     Boolean              @default(false) @map("allow_investigations")
+  allowSubmissions        Boolean              @default(false) @map("allow_submissions")
+  requireMerchantApproval Boolean              @default(true) @map("require_merchant_approval")
+  members                 MerchantMember[]
+  integration             MerchantIntegration?
+  events                  MerchantEvent[]
+  webhookEvents           WebhookEvent[]
+  transactions            Transaction[]
+  orders                  MerchantOrder[]
+  dossiers                EvidenceDossier[]
+  verifications           VerificationRun[]
+  investigations          InvestigationRun[]
+  orderSources            OrderSourceJob[]
+  disputes                Dispute[]
+  submissions             Submission[]
+  subscriptions           Subscription[]
+
+  @@map("merchants")
+}
+
+// Planes de suscripción. Los precios se configuran en base de datos (no hardcodeados).
+model Plan {
+  id                   String   @id @default(uuid()) @db.Uuid
+  name                 String   @db.VarChar(120)
+  priceCents           Int      // Precio en centavos de la moneda indicada
+  currency             String   @default("USD") @db.VarChar(3)
+  interval             String   @db.VarChar(16) // MONTH | YEAR
+  maxTransactions      Int?
+  maxDisputes          Int?
+  includesConciliation Boolean  @default(false)
+  active               Boolean  @default(true)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  subscriptions        Subscription[]
+
+  @@map("plans")
+}
+
+// Suscripción activa de un merchant a un plan.
+model Subscription {
+  id                String   @id @default(uuid()) @db.Uuid
+  merchantId        String   @map("merchant_id") @db.Uuid
+  planId            String   @map("plan_id") @db.Uuid
+  status            String   @default("ACTIVE") @db.VarChar(32) // ACTIVE | CANCELED | EXPIRED
+  currentPeriodEnd  DateTime @map("current_period_end") @db.Timestamptz(3)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  plan              Plan     @relation(fields: [planId], references: [id])
+  merchant          Merchant @relation(fields: [merchantId], references: [id])
+
+  @@map("subscriptions")
+}
+
+enum MerchantRole {
+  ADMIN
+  VIEWER
+}
+
+model MerchantMember {
+  id         String       @id @default(uuid()) @db.Uuid
+  merchantId String       @map("merchant_id") @db.Uuid
+  authUserId String       @map("auth_user_id") @db.Uuid
+  role       MerchantRole @default(VIEWER)
+  active     Boolean      @default(true)
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  merchant   Merchant     @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+
+  @@index([merchantId])
+  @@index([authUserId])
+  @@map("merchant_members")
+}
+
+model MerchantIntegration {
+  merchantId            String   @id @map("merchant_id") @db.Uuid
+  connectionStatus      String   @map("connection_status")
+  disputesReadStatus    String   @map("disputes_read_status")
+  credentialFingerprint String   @map("credential_fingerprint")
+  lastCheckedAt         DateTime @map("last_checked_at") @db.Timestamptz(3)
+  paypalHttpStatus      Int?     @map("paypal_http_status")
+  paypalDebugId         String?  @map("paypal_debug_id")
+  merchant              Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+
+  @@map("merchant_integrations")
+}
+
+model MerchantEvent {
+  id          String   @id @default(uuid()) @db.Uuid
+  merchantId  String   @map("merchant_id") @db.Uuid
+  actorUserId String   @map("actor_user_id") @db.Uuid
+  action      String
+  details     Json
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  merchant    Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+
+  @@index([merchantId, createdAt])
+  @@map("merchant_events")
+}
+
+model WebhookEvent {
+  id             String        @id @default(uuid()) @db.Uuid
+  merchantId     String        @map("merchant_id") @db.Uuid
+  environment    String        @default("sandbox")
+  paypalEventId  String        @map("paypal_event_id") @db.VarChar(255)
+  eventType      String        @map("event_type") @db.VarChar(128)
+  eventCreatedAt DateTime      @map("event_created_at") @db.Timestamptz(3)
+  webhookId      String        @map("webhook_id")
+  transmissionId String        @map("transmission_id")
+  payload        Json
+  rawBody        String        @map("raw_body")
+  payloadHash    String        @map("payload_hash") @db.VarChar(64)
+  rawBodyHash    String        @map("raw_body_hash") @db.VarChar(64)
+  receivedAt     DateTime      @default(now()) @map("received_at") @db.Timestamptz(3)
+  merchant       Merchant      @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  job            IngestionJob?
+  transaction    Transaction?
+  disputeSource  Dispute?       @relation("DisputeSourceEvent")
+  disputeEvents  DisputeEvent[]
+  submissionEvents SubmissionEvent[]
+
+  @@unique([merchantId, environment, paypalEventId])
+  @@index([merchantId, receivedAt])
+  @@map("webhook_events")
+}
+
+model IngestionJob {
+  id         String       @id @default(uuid()) @db.Uuid
+  eventId    String       @unique @map("event_id") @db.Uuid
+  kind       String
+  status     String       @default("QUEUED")
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  finishedAt DateTime?    @map("finished_at") @db.Timestamptz(3)
+  errorCode  String?      @map("error_code") @db.VarChar(64)
+  event      WebhookEvent @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+  @@map("ingestion_jobs")
+}
+
+// M03 owns captured payments. References are not merchant order documents.
+model Transaction {
+  id                     String   @id @default(uuid()) @db.Uuid
+  merchantId             String   @map("merchant_id") @db.Uuid
+  environment            String   @default("sandbox")
+  paypalCaptureId        String   @map("paypal_capture_id") @db.VarChar(255)
+  paypalOrderId          String?  @map("paypal_order_id") @db.VarChar(255)
+  merchantOrderReference String?  @map("merchant_order_reference") @db.VarChar(255)
+  invoiceId              String?  @map("invoice_id") @db.VarChar(255)
+  status                 String   @default("COMPLETED")
+  currencyCode           String   @map("currency_code") @db.VarChar(3)
+  amount                 Decimal  @db.Decimal(24, 8)
+  capturedAt             DateTime @map("captured_at") @db.Timestamptz(3)
+  sourceEventId          String   @unique @map("source_event_id") @db.Uuid
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  merchantOrderId        String?  @unique @map("merchant_order_id") @db.Uuid
+  orderLinkError         String?  @map("order_link_error") @db.VarChar(64)
+
+  merchant       Merchant           @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  sourceEvent    WebhookEvent       @relation(fields: [sourceEventId], references: [id], onDelete: Restrict)
+  merchantOrder  MerchantOrder?     @relation(fields: [merchantOrderId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  dossier        EvidenceDossier?
+  verifications  VerificationRun[]
+  investigations InvestigationRun[]
+  orderSources   OrderSourceJob[]
+  disputes       Dispute[]
+
+  @@unique([merchantId, environment, paypalCaptureId])
+  @@unique([merchantOrderId, merchantId])
+  @@unique([id, merchantId])
+  @@index([merchantId, createdAt, id])
+  @@map("transactions")
+}
+
+model MerchantOrder {
+  id             String       @id @default(uuid()) @db.Uuid
+  merchantId     String       @map("merchant_id") @db.Uuid
+  environment    String       @default("sandbox")
+  externalId     String       @map("external_id") @db.VarChar(255)
+  paypalOrderId  String?      @map("paypal_order_id") @db.VarChar(255)
+  sourceKind     String       @map("source_kind")
+  sourceSystem   String       @map("source_system") @db.VarChar(255)
+  currencyCode   String       @map("currency_code") @db.VarChar(3)
+  totalAmount    Decimal      @map("total_amount") @db.Decimal(24, 8)
+  shippingAmount Decimal      @map("shipping_amount") @db.Decimal(24, 8)
+  taxAmount      Decimal      @map("tax_amount") @db.Decimal(24, 8)
+  discountAmount Decimal      @map("discount_amount") @db.Decimal(24, 8)
+  orderedAt      DateTime     @map("ordered_at") @db.Timestamptz(3)
+  items          Json
+  contentHash    String       @map("content_hash") @db.VarChar(64)
+  createdBy      String       @map("created_by") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  merchant       Merchant     @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  transaction    Transaction?
+
+  @@unique([merchantId, environment, externalId])
+  @@unique([id, merchantId])
+  @@unique([merchantId, environment, paypalOrderId])
+  @@index([merchantId, createdAt, id])
+  @@map("merchant_orders")
+}
+
+model EvidenceDossier {
+  id            String         @id @default(uuid()) @db.Uuid
+  merchantId    String         @map("merchant_id") @db.Uuid
+  transactionId String         @unique @map("transaction_id") @db.Uuid
+  revision      Int            @default(0)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(3)
+  merchant      Merchant       @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  transaction   Transaction    @relation(fields: [transactionId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  items         EvidenceItem[]
+
+  @@unique([transactionId, merchantId])
+  @@index([merchantId])
+  @@map("evidence_dossiers")
+}
+
+model EvidenceItem {
+  id                String          @id @default(uuid()) @db.Uuid
+  dossierId         String          @map("dossier_id") @db.Uuid
+  type              String
+  logicalKey        String          @map("logical_key") @db.VarChar(64)
+  version           Int
+  sourceKind        String          @map("source_kind")
+  sourceSystem      String          @map("source_system") @db.VarChar(255)
+  externalReference String          @map("external_reference") @db.VarChar(255)
+  retrievedAt       DateTime        @map("retrieved_at") @db.Timestamptz(3)
+  content           Json
+  contentHash       String          @map("content_hash") @db.VarChar(64)
+  actorUserId       String?         @map("actor_user_id") @db.Uuid
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(3)
+  dossier           EvidenceDossier @relation(fields: [dossierId], references: [id], onDelete: Restrict)
+
+  @@unique([dossierId, version])
+  @@index([dossierId, logicalKey, version])
+  @@map("evidence_items")
+}
+
+// M05 owns investigations; evidence originals remain owned by M04.
+model InvestigationRun {
+  id               String            @id @default(uuid()) @db.Uuid
+  merchantId       String            @map("merchant_id") @db.Uuid
+  transactionId    String            @map("transaction_id") @db.Uuid
+  idempotencyKey   String            @map("idempotency_key") @db.Uuid
+  actorUserId      String            @map("actor_user_id") @db.Uuid
+  status           String            @default("RUNNING")
+  provider         String
+  model            String            @db.VarChar(128)
+  promptVersion    String            @map("prompt_version") @db.VarChar(64)
+  evidenceRevision Int               @map("evidence_revision")
+  snapshot         Json
+  snapshotHash     String            @map("snapshot_hash") @db.VarChar(64)
+  result           Json?
+  resultHash       String?           @map("result_hash") @db.VarChar(64)
+  trace            Json
+  usage            Json
+  errorCode        String?           @map("error_code") @db.VarChar(80)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt        DateTime          @map("expires_at") @db.Timestamptz(3)
+  finishedAt       DateTime?         @map("finished_at") @db.Timestamptz(3)
+  merchant         Merchant          @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  transaction      Transaction       @relation(fields: [transactionId, merchantId], references: [id, merchantId], onDelete: Restrict)
+  verifications    VerificationRun[]
+
+  @@unique([merchantId, transactionId, idempotencyKey], map: "investigation_runs_merchant_id_transaction_id_idempotency_key_k")
+  @@unique([id, transactionId, merchantId])
+  @@index([merchantId, transactionId, createdAt])
+  @@map("investigation_runs")
+}
+
+// M03 owns source work and normalized current data; M04 owns original history.
+model OrderSourceJob {
+  id              String      @id @default(uuid()) @db.Uuid
+  merchantId      String      @map("merchant_id") @db.Uuid
+  transactionId   String      @map("transaction_id") @db.Uuid
+  providerId      String      @map("provider_id") @db.VarChar(64)
+  sourceKind      String      @map("source_kind")
+  sourceSystem    String      @map("source_system") @db.VarChar(255)
+  status          String      @default("PENDING")
+  attempts        Int         @default(0)
+  leaseToken      String?     @map("lease_token") @db.Uuid
+  leaseExpiresAt  DateTime?   @map("lease_expires_at") @db.Timestamptz(3)
+  nextAttemptAt   DateTime?   @map("next_attempt_at") @db.Timestamptz(3)
+  lastCheckedAt   DateTime?   @map("last_checked_at") @db.Timestamptz(3)
+  lastSucceededAt DateTime?   @map("last_succeeded_at") @db.Timestamptz(3)
+  errorCode       String?     @map("error_code") @db.VarChar(128)
+  httpStatus      Int?        @map("http_status")
+  evidenceId      String?     @map("evidence_id") @db.Uuid
+  normalized      Json?
+  contentHash     String?     @map("content_hash") @db.VarChar(64)
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz(3)
+  merchant        Merchant    @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  transaction     Transaction @relation(fields: [transactionId, merchantId], references: [id, merchantId], onDelete: Cascade)
+
+  @@unique([transactionId, providerId])
+  @@index([merchantId, status, nextAttemptAt])
+  @@map("order_source_jobs")
+}
+
+// M06 owns verification runs; M05 remains immutable during verification.
+model VerificationRun {
+  id               String      @id @default(uuid()) @db.Uuid
+  merchantId       String      @map("merchant_id") @db.Uuid
+  transactionId    String      @map("transaction_id") @db.Uuid
+  investigationId  String      @map("investigation_id") @db.Uuid
+  idempotencyKey   String      @map("idempotency_key") @db.Uuid
+  actorUserId      String      @map("actor_user_id") @db.Uuid
+  status           String      @default("RUNNING")
+  provider         String
+  model            String      @db.VarChar(128)
+  promptVersion    String      @map("prompt_version") @db.VarChar(64)
+  evidenceRevision Int         @map("evidence_revision")
+  snapshot         Json
+  snapshotHash     String      @map("snapshot_hash") @db.VarChar(64)
+  result           Json?
+  resultHash       String?     @map("result_hash") @db.VarChar(64)
+  trace            Json
+  usage            Json
+  errorCode        String?     @map("error_code") @db.VarChar(80)
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt        DateTime    @map("expires_at") @db.Timestamptz(3)
+  finishedAt       DateTime?   @map("finished_at") @db.Timestamptz(3)
+  merchant         Merchant    @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  transaction      Transaction @relation(fields: [transactionId, merchantId], references: [id, merchantId], onDelete: Restrict)
+
+  investigation InvestigationRun @relation(fields: [investigationId, transactionId, merchantId], references: [id, transactionId, merchantId], onDelete: Restrict, map: "verification_runs_investigation_fkey")
+
+  @@unique([merchantId, investigationId, idempotencyKey], map: "verification_runs_idempotency_key")
+  @@index([merchantId, transactionId, createdAt])
+  @@map("verification_runs")
+}
+
+// M07 owns dispute orchestration. PayPal status/stage are stored verbatim and
+// never mixed with the local workflow state.
+model Dispute {
+  id              String   @id @default(uuid()) @db.Uuid
+  merchantId      String   @map("merchant_id") @db.Uuid
+  environment     String   @default("sandbox")
+  paypalDisputeId String   @map("paypal_dispute_id") @db.VarChar(255)
+  paypalStatus    String   @map("paypal_status") @db.VarChar(64)
+  paypalStage     String   @map("paypal_stage") @db.VarChar(64)
+  paypalReason    String   @map("paypal_reason") @db.VarChar(128)
+  paypalOutcome   String?  @map("paypal_outcome") @db.VarChar(64)
+  reasonCategory  String   @map("reason_category") @db.VarChar(32)
+  internalState   String   @default("DETECTED") @map("internal_state") @db.VarChar(32)
+  currencyCode    String?  @map("currency_code") @db.VarChar(3)
+  amount          Decimal? @db.Decimal(24, 8)
+  disputedAt      DateTime @map("disputed_at") @db.Timestamptz(3)
+  deadlineAt      DateTime? @map("deadline_at") @db.Timestamptz(3)
+  lastEventAt     DateTime @map("last_event_at") @db.Timestamptz(3)
+  transactionId   String?  @map("transaction_id") @db.Uuid
+  linkStatus      String   @default("UNLINKED") @map("link_status") @db.VarChar(16)
+  linkReason      String?  @map("link_reason") @db.VarChar(64)
+  sourceEventId   String   @unique @map("source_event_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  merchant    Merchant      @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  transaction Transaction?  @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  sourceEvent WebhookEvent  @relation("DisputeSourceEvent", fields: [sourceEventId], references: [id], onDelete: Restrict)
+  events      DisputeEvent[]
+  submissions Submission[]
+
+  @@unique([merchantId, environment, paypalDisputeId])
+  @@index([merchantId, disputedAt, id])
+  @@index([merchantId, internalState, disputedAt])
+  @@map("disputes")
+}
+
+model DisputeEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  disputeId     String   @map("dispute_id") @db.Uuid
+  eventId       String   @unique @map("event_id") @db.Uuid
+  eventType     String   @map("event_type") @db.VarChar(128)
+  paypalEventId String   @map("paypal_event_id") @db.VarChar(255)
+  outcome       String   @default("APPLIED") @db.VarChar(32)
+  reason        String?  @db.VarChar(64)
+  occurredAt    DateTime @map("occurred_at") @db.Timestamptz(3)
+  receivedAt    DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+
+  dispute Dispute      @relation(fields: [disputeId], references: [id], onDelete: Restrict)
+  event   WebhookEvent @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  @@index([disputeId, occurredAt, id])
+  @@map("dispute_events")
+}
+
+// M08 owns submission orchestration. Evidence is only sent to PayPal when
+// the deterministic Submission Guard approves and the merchant has authorised.
+model Submission {
+  id              String   @id @default(uuid()) @db.Uuid
+  merchantId      String   @map("merchant_id") @db.Uuid
+  disputeId       String   @map("dispute_id") @db.Uuid
+  environment     String   @default("sandbox")
+  paypalRequestId String?  @map("paypal_request_id") @db.VarChar(255)
+  status          String   @default("BLOCKED") @map("status") @db.VarChar(16)
+  paypalResponseStatus Int?  @map("paypal_response_status")
+  submittedAt     DateTime? @map("submitted_at")
+  errorCode       String?  @map("error_code") @db.VarChar(80)
+  errorMessage    String?  @map("error_message") @db.VarChar(2000)
+  guardVerdict    String   @map("guard_verdict") @db.VarChar(16)
+  guardReasons    Json     @map("guard_reasons")
+  idempotencyKey  String   @unique @map("idempotency_key") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  merchant   Merchant   @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  dispute    Dispute    @relation(fields: [disputeId], references: [id], onDelete: Restrict)
+  events     SubmissionEvent[]
+
+  @@unique([merchantId, disputeId])
+  @@index([merchantId, createdAt, id])
+  @@map("submissions")
+}
+
+model SubmissionEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  submissionId  String   @map("submission_id") @db.Uuid
+  eventId       String   @unique @map("event_id") @db.Uuid
+  eventType     String   @map("event_type") @db.VarChar(128)
+  paypalEventId String   @map("paypal_event_id") @db.VarChar(255)
+  outcome       String   @default("APPLIED") @db.VarChar(32)
+  reason        String?  @db.VarChar(64)
+  occurredAt    DateTime @map("occurred_at") @db.Timestamptz(3)
+  receivedAt    DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Restrict)
+  event      WebhookEvent @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  @@index([submissionId, occurredAt, id])
+  @@map("submission_events")
+}
+
+// --- M04: ERP Integraciones (PayPalAudito) ---
+
+// Conexión de un merchant a un ERP o sistema contable autorizado.
+model ErpConnection {
+  id                String   @id @default(uuid()) @db.Uuid
+  merchantId        String   @map("merchant_id") @db.Uuid
+  provider          String   @map("provider") @db.VarChar(64) // bind, siigo-mx, odoo, erpnext, ...
+  externalTenantId  String?  @map("external_tenant_id") @db.VarChar(255)
+  baseUrl           String?  @map("base_url") @db.VarChar(1024)
+  status            String   @map("status") @db.VarChar(32) // pending_authorization | connected | syncing | restricted_permissions | needs_reauth | rate_limited | error | disconnected
+  scopes            String?  @map("scopes") @db.VarChar(1024)
+  lastSyncAt        DateTime? @map("last_sync_at") @db.Timestamptz(3)
+  lastSyncError     String?  @map("last_sync_error") @db.VarChar(1024)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  merchant   Merchant          @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  secret     ErpSecret?
+  cursors    ErpSyncCursor[]
+  records    ExternalRecord[]
+
+  @@index([merchantId, provider])
+  @@map("erp_connections")
+}
+
+// Credenciales cifradas de una conexión ERP. Nunca se exponen al frontend.
+model ErpSecret {
+  id              String   @id @default(uuid()) @db.Uuid
+  connectionId    String   @unique @map("connection_id") @db.Uuid
+  encryptedPayload String @map("encrypted_payload") // JSON cifrado con API key/token, fechas de expiración, etc.
+  keyVersion      Int      @default(1) @map("key_version")
+  rotatedAt       DateTime @default(now()) @map("rotated_at") @db.Timestamptz(3)
+
+  connection ErpConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@map("erp_secrets")
+}
+
+// Cursor de sincronización incremental por recurso y conexión.
+model ErpSyncCursor {
+  id             String   @id @default(uuid()) @db.Uuid
+  connectionId   String   @map("connection_id") @db.Uuid
+  resource       String   @map("resource") @db.VarChar(64) // sales_orders | invoices | payments | shipments | customers
+  cursor         String?  @map("cursor") @db.VarChar(1024)
+  lastSuccessAt  DateTime? @map("last_success_at") @db.Timestamptz(3)
+  lastError      String?  @map("last_error") @db.VarChar(1024)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  connection ErpConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, resource])
+  @@map("erp_sync_cursors")
+}
+
+// Registros normalizados extraídos de un ERP, listos para conciliar con PayPal.
+model ExternalRecord {
+  id                String   @id @default(uuid()) @db.Uuid
+  merchantId        String   @map("merchant_id") @db.Uuid
+  connectionId      String   @map("connection_id") @db.Uuid
+  recordType        String   @map("record_type") @db.VarChar(64) // sales_order | invoice | payment | shipment | customer
+  externalId        String   @map("external_id") @db.VarChar(255)
+  updatedAt         DateTime @map("updated_at") @db.Timestamptz(3)
+  normalizedPayload Json     @map("normalized_payload")
+  sourceHash        String   @map("source_hash") @db.VarChar(64)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  merchant    Merchant      @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  connection  ErpConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, recordType, externalId])
+  @@index([merchantId, recordType, externalId])
+  @@map("external_records")
+}
+
+// Conciliación trazable entre una captura PayPal y un registro de ERP.
+model TransactionLink {
+  id               String   @id @default(uuid()) @db.Uuid
+  merchantId       String   @map("merchant_id") @db.Uuid
+  paypalCaptureId  String   @map("paypal_capture_id") @db.VarChar(255)
+  paypalOrderId    String?  @map("paypal_order_id") @db.VarChar(255)
+  recordId         String   @map("record_id") @db.Uuid
+  matchMethod      String   @map("match_method") @db.VarChar(64) // invoice_id_exact | custom_id_exact | corroborated | suggested
+  confidence       String   @map("confidence") @db.VarChar(16) // high | medium | low
+  reviewedBy       String?  @map("reviewed_by") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  merchant Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  record   ExternalRecord @relation(fields: [recordId], references: [id], onDelete: Restrict)
+
+  @@unique([merchantId, paypalCaptureId, recordId])
+  @@index([merchantId, paypalCaptureId])
+  @@map("transaction_links")
+}
