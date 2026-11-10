@@ -246,9 +246,9 @@ export default function ActivityPage() {
             </CardHeader>
             <CardContent>
               <BarChartComponent
-                data={actorData}
-                dataKey="count"
-                nameKey="actor"
+                data={actorData.map(d => ({ name: d.actor, value: d.count, color: d.color }))}
+                dataKey="value"
+                nameKey="name"
                 title="Events by Actor"
                 height={256}
                 layout="vertical"
