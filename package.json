@@ -14,7 +14,7 @@
     "build:api": "pnpm --filter @resolve-ai/contracts build && pnpm --filter @resolve-ai/api build",
     "build:web": "pnpm --filter @resolve-ai/web build",
     "start": "pnpm --filter @resolve-ai/api start",
-    "start:render": "prisma migrate deploy --config apps/api/prisma.config.ts && node apps/api/dist/main.js",
+    "start:render": "pnpm --filter @resolve-ai/api start:render",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
