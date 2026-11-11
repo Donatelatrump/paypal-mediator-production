@@ -1,14 +1,20 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/useToast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 
 function LoginForm() {
   const router = useRouter();
@@ -20,6 +26,7 @@ function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
 
   const callbackUrl = searchParams.get('callbackUrl') || '/';
 
@@ -31,16 +38,38 @@ function LoginForm() {
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) throw error;
-        toast({ title: 'Welcome back!', description: 'You have been signed in.' });
+        toast({
+          title: 'Welcome back!',
+          description: 'You have been signed in.',
+        });
+        router.push(callbackUrl);
+        router.refresh();
       } else {
-        const { error } = await signUp(email, password);
+        const { error, session } = await signUp(email, password);
         if (error) throw error;
-        toast({ title: 'Account created!', description: 'Please check your email to confirm.' });
+
+        if (!session) {
+          setIsLogin(true);
+          setStatusMessage(
+            `Account created. Check ${email} for a confirmation link, then sign in.`,
+          );
+          return;
+        }
+
+        toast({
+          title: 'Account created!',
+          description: 'You have been signed in.',
+        });
+        router.push(callbackUrl);
+        router.refresh();
       }
-      router.push(callbackUrl);
-      router.refresh();
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      toast({
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : 'Something went wrong.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -54,6 +83,14 @@ function LoginForm() {
           <CardDescription>
             {isLogin ? 'Sign in to your account' : 'Create a new account'}
           </CardDescription>
+          {statusMessage && (
+            <p
+              role="status"
+              className="text-sm text-center text-muted-foreground"
+            >
+              {statusMessage}
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -82,15 +119,22 @@ function LoginForm() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
+              {loading
+                ? 'Please wait...'
+                : isLogin
+                  ? 'Sign In'
+                  : 'Create Account'}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="flex flex-col gap-2">
           <p className="text-sm text-muted-foreground text-center">
-            {isLogin ? "Don't have an account?" : 'Already have an account?'} {' '}
+            {isLogin ? "Don't have an account?" : 'Already have an account?'}{' '}
             <button
-              onClick={() => setIsLogin(!isLogin)}
+              onClick={() => {
+                setIsLogin(!isLogin);
+                setStatusMessage('');
+              }}
               className="text-primary hover:underline"
             >
               {isLogin ? 'Sign up' : 'Sign in'}
@@ -102,11 +146,15 @@ function LoginForm() {
   );
 }
 
-import { useState } from 'react';
-
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
       <LoginForm />
     </Suspense>
   );
