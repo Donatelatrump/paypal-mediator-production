@@ -2,9 +2,8 @@
   "buildCommand": "pnpm --filter @resolve-ai/web build",
   "devCommand": "pnpm --filter @resolve-ai/web dev",
   "installCommand": "pnpm install --frozen-lockfile",
-  "framework": "nextjs",
+  "framework": "vite",
+  "outputDirectory": "dist",
   "regions": ["iad1"],
-  "env": {
-    "NEXT_PUBLIC_API_BASE_URL": "https://resolve-ai-api-ybmj.onrender.com/api"
-  }
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

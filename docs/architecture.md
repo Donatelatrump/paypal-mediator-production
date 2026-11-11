@@ -30,6 +30,7 @@ apps/api/
     unit/
     http/
     integration/            # PostgreSQL real, suite test:db
+apps/web/                   # Frontend React/Vite, fuente de verdad: paypal-mediator-frontend
 packages/contracts/src/     # Schemas Zod y tipos públicos
 docs/                       # Guías y decisiones
 .github/workflows/          # CI
@@ -69,7 +70,7 @@ de dominio de `information.md` siguen siendo propuestas.
 
 ## Decisiones
 
-- Un proceso NestJS, sin frontend ni infraestructura de colas todavía.
+- Un proceso NestJS para la API y un frontend React/Vite en `apps/web`. Los contratos y la autorización pertenecen al backend.
 - TypeScript estricto, ESM, Node 24 y pnpm con lockfile. NestJS 11 y Prisma 7
   fijados; no utilizar la versión candidata Prisma 8.
 - Prisma genera TypeScript en `src/generated/prisma` y usa adaptador PostgreSQL.

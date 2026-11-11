@@ -1,0 +1,265 @@
+.initial-mockup {
+  padding-top: 1px;
+}
+.mock-bar {
+  display: block;
+  width: 80px;
+  height: 7px;
+  background: #242424;
+  border-radius: 20px;
+}
+.mock-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+.mock-bar.heading {
+  width: 154px;
+  height: 17px;
+  background: #444;
+}
+.mock-bar.subtitle {
+  width: 229px;
+  height: 7px;
+  margin-top: 15px;
+}
+.mock-actions {
+  display: flex;
+  gap: 10px;
+}
+.mock-actions span {
+  width: 94px;
+  height: 34px;
+  border: 1px solid #2a2a2a;
+  border-radius: 9px;
+  background: #111;
+}
+.mock-actions span:last-child {
+  width: 34px;
+  background: #292929;
+  border-color: #3a3a3a;
+}
+.mock-panel {
+  border: 1px solid #242424;
+  background: #101010;
+  border-radius: 16px;
+  padding: 24px;
+  overflow: hidden;
+  min-width: 0;
+}
+.mock-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+.mock-summary {
+  padding: 20px;
+  min-height: 151px;
+}
+.mock-panel-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.mock-square {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: #181818;
+  border: 1px solid #282828;
+  flex-shrink: 0;
+}
+.mock-bar.value {
+  width: 95px;
+  height: 22px;
+  margin: 19px 0 17px;
+  background: #363636;
+}
+.mock-summary-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mock-bar.pill {
+  width: 36px;
+  height: 16px;
+  background: #252525;
+  border-radius: 6px;
+}
+.mock-summary-footer > .mock-bar:last-child {
+  width: 57px;
+  height: 5px;
+}
+.mock-main-grid,
+.mock-bottom-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(240px, 1fr);
+  gap: 20px;
+  margin-top: 20px;
+}
+.mock-large,
+.mock-side {
+  min-height: 315px;
+}
+.mock-panel-top .subtitle {
+  width: 148px;
+  height: 5px;
+  margin-top: 10px;
+  background: #1e1e1e;
+}
+.mock-control {
+  width: 73px;
+  height: 27px;
+  border: 1px solid #2b2b2b;
+  border-radius: 8px;
+  background: #151515;
+}
+.mock-plot {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 182px;
+  margin-top: 26px;
+}
+.mock-plot span {
+  border-top: 1px solid #1d1d1d;
+  width: 100%;
+}
+.mock-plot-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+}
+.mock-plot-footer .mock-bar {
+  width: 23px;
+  height: 4px;
+  background: #262626;
+}
+.mock-ring {
+  width: 147px;
+  height: 147px;
+  border: 18px solid #202020;
+  border-radius: 50%;
+  margin: 36px auto 27px;
+  box-shadow:
+    0 0 0 1px #252525,
+    inset 0 0 0 1px #252525;
+}
+.mock-legend {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+}
+.mock-legend .mock-bar {
+  width: 40px;
+  height: 5px;
+}
+.mock-bottom-grid > .mock-panel {
+  min-height: 277px;
+}
+.mock-table {
+  margin-top: 18px;
+}
+.mock-row {
+  display: grid;
+  grid-template-columns: 30px 1fr 0.6fr 0.5fr 0.4fr;
+  gap: 15px;
+  align-items: center;
+  min-height: 49px;
+  border-bottom: 1px solid #202020;
+}
+.mock-row:last-child {
+  border-bottom: none;
+}
+.mock-row-icon {
+  width: 27px;
+  height: 27px;
+  background: #1c1c1c;
+  border: 1px solid #2b2b2b;
+  border-radius: 9px;
+}
+.mock-row .mock-bar {
+  width: 100%;
+  max-width: 74px;
+  height: 5px;
+}
+.mock-row .short {
+  width: 40px;
+  height: 4px;
+  margin-top: 7px;
+  background: #1e1e1e;
+}
+.mock-row .pill {
+  width: 42px;
+  height: 16px;
+}
+.mock-blocks {
+  display: grid;
+  gap: 12px;
+  margin-top: 26px;
+}
+.mock-blocks span {
+  display: block;
+  height: 46px;
+  background: #161616;
+  border: 1px solid #232323;
+  border-radius: 11px;
+}
+@media (min-width: 1600px) {
+  .mock-large,
+  .mock-side {
+    min-height: 360px;
+  }
+  .mock-plot {
+    height: 225px;
+  }
+  .mock-ring {
+    margin-top: 57px;
+    margin-bottom: 47px;
+  }
+}
+@media (max-width: 1100px) {
+  .mock-summary {
+    padding: 16px;
+  }
+  .mock-summary-footer > .mock-bar:last-child {
+    width: 36px;
+  }
+}
+@media (max-width: 760px) {
+  .mock-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .mock-main-grid,
+  .mock-bottom-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .mock-side {
+    min-height: 290px;
+  }
+  .mock-heading {
+    margin-bottom: 26px;
+  }
+  .mock-heading .subtitle {
+    width: 145px;
+  }
+  .mock-actions span:first-child {
+    display: none;
+  }
+  .mock-panel {
+    padding: 20px;
+  }
+  .mock-row {
+    gap: 10px;
+    grid-template-columns: 26px 1fr 0.5fr 0.5fr;
+  }
+  .mock-row > .mock-bar:last-child {
+    display: none;
+  }
+}

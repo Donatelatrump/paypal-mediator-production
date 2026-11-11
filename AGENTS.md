@@ -1,7 +1,7 @@
 # Instrucciones del repositorio
 
 - Leer `information.md` y `docs/architecture.md` antes de implementar.
-- Este repositorio contiene únicamente backend; el frontend vive aparte.
+- Este monorepo contiene el backend en `apps/api` y el frontend React/Vite en `apps/web`. El repositorio hermano `paypal-mediator-frontend` es la fuente de verdad para su interfaz.
 - Mantener un backend NestJS modular, sin éxitos ficticios.
 - Ordenar archivos según `docs/architecture.md`: código en `apps/api/src`,
   pruebas por categoría en `apps/api/test`, Prisma en `apps/api/prisma`,

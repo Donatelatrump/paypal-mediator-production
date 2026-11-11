@@ -15,11 +15,11 @@
     "build:web": "pnpm --filter @resolve-ai/web build",
     "start": "pnpm --filter @resolve-ai/api start",
     "start:render": "pnpm --filter @resolve-ai/api start:render",
-    "lint": "eslint . --max-warnings=0",
+    "lint": "pnpm lint:api && pnpm lint:web",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm --filter @resolve-ai/contracts build && pnpm -r typecheck",
-    "test": "pnpm --filter @resolve-ai/contracts build && vitest run",
+    "test": "pnpm test:api && pnpm test:web",
     "test:db": "pnpm --filter @resolve-ai/contracts build && vitest run --config vitest.db.config.ts",
     "db:generate": "pnpm --filter @resolve-ai/api exec prisma generate",
     "db:validate": "pnpm --filter @resolve-ai/api exec prisma validate",
@@ -27,7 +27,11 @@
     "db:deploy": "pnpm --filter @resolve-ai/api exec prisma migrate deploy",
     "merchant:setup": "pnpm --filter @resolve-ai/api exec tsx --tsconfig tsconfig.json src/commands/setup-merchant.ts",
     "storage:setup": "pnpm --filter @resolve-ai/api exec tsx --tsconfig tsconfig.json src/commands/setup-evidence-storage.ts",
-    "check": "pnpm db:generate && pnpm db:validate && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build"
+    "check": "pnpm db:generate && pnpm db:validate && pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build",
+    "lint:api": "eslint . --max-warnings=0",
+    "lint:web": "pnpm --filter @resolve-ai/web lint",
+    "test:api": "pnpm --filter @resolve-ai/contracts build && vitest run",
+    "test:web": "pnpm --filter @resolve-ai/web test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -60,6 +60,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @resolve-ai/web lint
       - run: pnpm --filter @resolve-ai/web typecheck
+      - run: pnpm --filter @resolve-ai/web test
       - run: pnpm --filter @resolve-ai/web build
 
   deploy-backend:

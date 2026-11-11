@@ -9,6 +9,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/generated/**',
       'coverage/**',
+      'apps/web/**',
     ],
   },
   js.configs.recommended,
