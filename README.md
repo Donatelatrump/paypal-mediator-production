@@ -1,4 +1,4 @@
-# ResolveAI — Unified Monorepo
+# ResolveAI — Unified Monorepo 2
 
 This monorepo contains both the backend (NestJS) and frontend (React/Vite) for ResolveAI.
 
