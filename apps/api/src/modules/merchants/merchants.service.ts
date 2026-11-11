@@ -32,24 +32,7 @@ export class MerchantsService {
     @Inject(AuditService) private readonly audit: AuditService,
   ) {}
 
-  private assertScope(merchantId: string): void {
-    // Cuando MERCHANT_ID está configurado (despliegue single-tenant legacy),
-    // se respeta como merchant autorizado. Cuando no está definido, se permite
-    // cualquier merchant activo del usuario autenticado (multicliente).
-    if (
-      this.environment.MERCHANT_ID &&
-      merchantId !== this.environment.MERCHANT_ID
-    ) {
-      throw new ApiException(
-        'MERCHANT_ACCESS_DENIED',
-        'Access to this merchant is not authorized',
-        403,
-      );
-    }
-  }
-
   private async findMerchant(merchantId: string) {
-    this.assertScope(merchantId);
     const merchant = await this.prisma.merchant.findUnique({
       where: { id: merchantId },
     });
@@ -131,7 +114,6 @@ export class MerchantsService {
     actor: MerchantActor,
     settings: UpdateMerchantSettings,
   ): Promise<MerchantResponse> {
-    this.assertScope(actor.merchantId);
     if (actor.role !== 'ADMIN')
       throw new ApiException(
         'MERCHANT_ADMIN_REQUIRED',
@@ -181,20 +163,26 @@ export class MerchantsService {
     const stored = await this.prisma.merchantIntegration.findUnique({
       where: { merchantId },
     });
+    const configured =
+      this.environment.MERCHANT_ID === merchantId &&
+      this.paypal.credentialsConfigured;
     const current =
-      stored?.credentialFingerprint === this.paypal.fingerprint ? stored : null;
+      configured && stored?.credentialFingerprint === this.paypal.fingerprint
+        ? stored
+        : null;
     return IntegrationsResponseSchema.parse({
       merchantId,
       paypal: {
         provider: 'PAYPAL',
         environment: 'sandbox',
         source: 'PAYPAL_SANDBOX',
-        credentialsConfigured: this.paypal.credentialsConfigured,
-        webhookConfigured: Boolean(this.environment.PAYPAL_WEBHOOK_ID),
-        connectionStatus: !this.paypal.credentialsConfigured
+        credentialsConfigured: configured,
+        webhookConfigured:
+          configured && Boolean(this.environment.PAYPAL_WEBHOOK_ID),
+        connectionStatus: !configured
           ? 'NOT_CONFIGURED'
           : (current?.connectionStatus ?? 'NOT_CHECKED'),
-        disputesReadStatus: this.paypal.credentialsConfigured
+        disputesReadStatus: configured
           ? (current?.disputesReadStatus ?? 'NOT_CHECKED')
           : 'NOT_CHECKED',
         lastCheckedAt: current?.lastCheckedAt.toISOString() ?? null,
@@ -205,14 +193,16 @@ export class MerchantsService {
   }
 
   async checkPayPal(actor: MerchantActor): Promise<IntegrationsResponse> {
-    this.assertScope(actor.merchantId);
     if (actor.role !== 'ADMIN')
       throw new ApiException(
         'MERCHANT_ADMIN_REQUIRED',
         'A merchant administrator is required',
         403,
       );
-    if (!this.paypal.credentialsConfigured) {
+    if (
+      this.environment.MERCHANT_ID !== actor.merchantId ||
+      !this.paypal.credentialsConfigured
+    ) {
       throw new ApiException(
         'PAYPAL_NOT_CONFIGURED',
         'PayPal Sandbox credentials are not configured',

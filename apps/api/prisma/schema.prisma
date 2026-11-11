@@ -41,6 +41,7 @@ model Merchant {
   allowInvestigations     Boolean              @default(false) @map("allow_investigations")
   allowSubmissions        Boolean              @default(false) @map("allow_submissions")
   requireMerchantApproval Boolean              @default(true) @map("require_merchant_approval")
+  invitations             MerchantInvitation[]
   members                 MerchantMember[]
   integration             MerchantIntegration?
   events                  MerchantEvent[]
@@ -109,6 +110,7 @@ model MerchantMember {
 
   @@index([merchantId])
   @@index([authUserId])
+  @@unique([merchantId, authUserId])
   @@map("merchant_members")
 }
 
@@ -565,4 +567,21 @@ model TransactionLink {
   @@unique([merchantId, paypalCaptureId, recordId])
   @@index([merchantId, paypalCaptureId])
   @@map("transaction_links")
+}
+
+model MerchantInvitation {
+  id         String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  merchantId String       @map("merchant_id") @db.Uuid
+  email      String       @db.VarChar(320)
+  role       MerchantRole @default(VIEWER)
+  invitedBy  String       @map("invited_by") @db.Uuid
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  expiresAt  DateTime     @map("expires_at") @db.Timestamptz(3)
+  acceptedAt DateTime?    @map("accepted_at") @db.Timestamptz(3)
+  revokedAt  DateTime?    @map("revoked_at") @db.Timestamptz(3)
+  merchant   Merchant     @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+
+  @@index([email, expiresAt])
+  @@index([merchantId])
+  @@map("merchant_invitations")
 }

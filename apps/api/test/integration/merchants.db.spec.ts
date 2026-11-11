@@ -100,11 +100,12 @@ describe('M01 HTTP + PostgreSQL + signed JWTs (MOCK identity issuer and PayPal)'
     expect(paypal.check).not.toHaveBeenCalled();
   });
 
-  it('denies a valid user with no membership or another merchant membership', async () => {
+  it('denies users without membership in the selected team', async () => {
     for (const userId of [randomUUID(), outsiderId]) {
       await request(context.app.getHttpServer())
         .get('/api/merchants/me')
         .auth(await issuer.token(userId), { type: 'bearer' })
+        .set('X-Merchant-Id', merchantId)
         .expect(403);
     }
   });
@@ -128,7 +129,7 @@ describe('M01 HTTP + PostgreSQL + signed JWTs (MOCK identity issuer and PayPal)'
     ).rejects.toMatchObject({ code: 'MERCHANT_ACTION_DISABLED' });
     await expect(
       service.assertActionAllowed(otherMerchantId, 'INVESTIGATE'),
-    ).rejects.toMatchObject({ code: 'MERCHANT_ACCESS_DENIED' });
+    ).rejects.toMatchObject({ code: 'MERCHANT_ACTION_DISABLED' });
   });
 
   it('blocks viewer writes and PayPal checks', async () => {

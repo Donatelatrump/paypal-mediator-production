@@ -1,3 +1,9 @@
+import { AccountAccessGuard } from './auth/account-access.guard.js';
+import {
+  AccountTeamsController,
+  MerchantTeamMembersController,
+} from './merchant-teams.controller.js';
+import { MerchantTeamsService } from './merchant-teams.service.js';
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../monitoring/audit.module.js';
 import { SupabaseAuthService } from './auth/supabase-auth.service.js';
@@ -12,8 +18,14 @@ import { PayPalAuthService } from './paypal/paypal-auth.service.js';
 
 @Module({
   imports: [AuditModule],
-  controllers: [MerchantsController],
+  controllers: [
+    MerchantsController,
+    AccountTeamsController,
+    MerchantTeamMembersController,
+  ],
   providers: [
+    AccountAccessGuard,
+    MerchantTeamsService,
     SupabaseAuthService,
     MerchantAccessGuard,
     MerchantsService,

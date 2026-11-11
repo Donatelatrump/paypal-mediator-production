@@ -68,3 +68,35 @@ export const IntegrationsResponseSchema = z.object({
   paypal: PayPalIntegrationSchema,
 });
 export type IntegrationsResponse = z.infer<typeof IntegrationsResponseSchema>;
+
+// A merchant is a team; account-level routes do not require an existing team.
+export const CreateMerchantSchema = z.strictObject({
+  displayName: z.string().trim().min(1).max(120),
+});
+export type CreateMerchant = z.infer<typeof CreateMerchantSchema>;
+export const InviteMerchantMemberSchema = z.strictObject({
+  email: z.string().trim().toLowerCase().max(320).pipe(z.email()),
+  role: MerchantRoleSchema.default('VIEWER'),
+});
+export type InviteMerchantMember = z.infer<typeof InviteMerchantMemberSchema>;
+export const MerchantInvitationSchema = z.object({
+  id: z.uuid(),
+  merchantId: z.uuid(),
+  displayName: z.string(),
+  email: z.email(),
+  role: MerchantRoleSchema,
+  expiresAt: z.iso.datetime(),
+});
+export const MerchantInvitationListSchema = z.object({
+  items: z.array(MerchantInvitationSchema),
+});
+export const MerchantMemberListSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.uuid(),
+      authUserId: z.uuid(),
+      role: MerchantRoleSchema,
+      createdAt: z.iso.datetime(),
+    }),
+  ),
+});

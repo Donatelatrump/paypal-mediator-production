@@ -9,6 +9,7 @@ import { ApiException } from '../../../common/http/api.exception.js';
 
 const UserClaimsSchema = z.object({
   sub: z.uuid(),
+  email: z.email().optional(),
   role: z.literal('authenticated'),
   is_anonymous: z.boolean().optional(),
 });
@@ -32,6 +33,12 @@ export class SupabaseAuthService {
   }
 
   async authenticate(authorization: string | undefined): Promise<string> {
+    return (await this.authenticateIdentity(authorization)).userId;
+  }
+
+  async authenticateIdentity(
+    authorization: string | undefined,
+  ): Promise<{ userId: string; email?: string }> {
     if (
       !authorization ||
       !/^Bearer \S+$/i.test(authorization) ||
@@ -61,7 +68,7 @@ export class SupabaseAuthService {
       const claims = UserClaimsSchema.parse(payload);
       if (claims.is_anonymous === true)
         throw new Error('Anonymous users cannot access merchant data');
-      return claims.sub;
+      return { userId: claims.sub, email: claims.email?.toLowerCase() };
     } catch {
       // Neither untrusted claims nor JOSE errors may be returned or logged.
       throw new ApiException(

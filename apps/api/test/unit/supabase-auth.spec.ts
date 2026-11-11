@@ -27,6 +27,13 @@ describe('Supabase JWT verification (MOCK issuer, real asymmetric signatures)', 
       await service.authenticate(`Bearer ${await issuer.token(userId)}`),
     ).toBe(userId);
   });
+  it('exposes only signed identity claims for invitation matching', async () => {
+    expect(
+      await service.authenticateIdentity(
+        `Bearer ${await issuer.token(userId, { email: 'Member@Teams.test' })}`,
+      ),
+    ).toEqual({ userId, email: 'member@teams.test' });
+  });
   it.each([undefined, '', 'Basic secret', 'Bearer not-a-jwt'])(
     'rejects absent or malformed authorization %s',
     async (header) => {

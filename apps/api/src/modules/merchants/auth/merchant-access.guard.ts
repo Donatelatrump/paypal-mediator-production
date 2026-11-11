@@ -7,11 +7,8 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
+import { z } from 'zod';
 import type { MerchantRole } from '@resolve-ai/contracts';
-import {
-  ENVIRONMENT,
-  type Environment,
-} from '../../../common/config/environment.js';
 import { PrismaService } from '../../../common/database/prisma.service.js';
 import { ApiException } from '../../../common/http/api.exception.js';
 import { SupabaseAuthService } from './supabase-auth.service.js';
@@ -30,7 +27,6 @@ export class MerchantAccessGuard implements CanActivate {
   constructor(
     @Inject(SupabaseAuthService) private readonly auth: SupabaseAuthService,
     @Inject(PrismaService) private readonly prisma: PrismaService,
-    @Inject(ENVIRONMENT) private readonly environment: Environment,
     @Inject(Reflector) private readonly reflector: Reflector,
   ) {}
 
@@ -38,42 +34,43 @@ export class MerchantAccessGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<MerchantRequest>();
     const userId = await this.auth.authenticate(request.headers.authorization);
 
-    let merchantId: string;
-    let role: MerchantRole;
-
-    if (this.environment.MERCHANT_ID) {
-      // Single-tenant legacy: only the configured merchant is accessible.
-      const member = await this.prisma.merchantMember.findFirst({
-        where: {
-          authUserId: userId,
-          active: true,
-          merchantId: this.environment.MERCHANT_ID,
-        },
-      });
-      if (!member) {
-        throw new ApiException(
-          'MERCHANT_ACCESS_DENIED',
-          'Access to this merchant is not authorized',
-          403,
-        );
-      }
-      merchantId = this.environment.MERCHANT_ID;
-      role = member.role;
-    } else {
-      // Multicliente futuro: any active membership is allowed.
-      const member = await this.prisma.merchantMember.findFirst({
-        where: { authUserId: userId, active: true },
-      });
-      if (!member) {
-        throw new ApiException(
-          'MERCHANT_ACCESS_DENIED',
-          'Access to this merchant is not authorized',
-          403,
-        );
-      }
-      merchantId = member.merchantId;
-      role = member.role;
+    // Selection never grants access: verify current membership on every request.
+    const selected = request.headers['x-merchant-id'];
+    if (selected !== undefined && !z.uuid().safeParse(selected).success) {
+      throw new ApiException(
+        'INVALID_MERCHANT_ID',
+        'X-Merchant-Id must be a single team UUID',
+        400,
+      );
     }
+    let member;
+    if (typeof selected === 'string') {
+      member = await this.prisma.merchantMember.findFirst({
+        where: { authUserId: userId, active: true, merchantId: selected },
+      });
+    } else {
+      const memberships = await this.prisma.merchantMember.findMany({
+        where: { authUserId: userId, active: true },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        take: 2,
+      });
+      if (memberships.length > 1) {
+        throw new ApiException(
+          'MERCHANT_SELECTION_REQUIRED',
+          'Select a team using X-Merchant-Id',
+          400,
+        );
+      }
+      member = memberships[0];
+    }
+    if (!member) {
+      throw new ApiException(
+        'MERCHANT_ACCESS_DENIED',
+        'Access to this merchant is not authorized',
+        403,
+      );
+    }
+    const { merchantId, role } = member;
 
     const adminOnly = this.reflector.getAllAndOverride<boolean>(ADMIN_ONLY, [
       context.getHandler(),
