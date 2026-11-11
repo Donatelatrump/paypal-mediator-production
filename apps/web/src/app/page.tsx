@@ -1,6 +1,5 @@
 'use client';
 
-import { useMemo } from 'react';
 import { useDashboard } from '@/hooks/useApi';
 import { DashboardLayout } from '@/components/DashboardLayout';
 import {
@@ -13,11 +12,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  PieChartComponent,
-  BarChartComponent,
-  LineChartComponent,
-} from '@/components/charts';
+import { PieChartComponent } from '@/components/charts';
 
 const COLORS = [
   '#3b82f6',
@@ -30,6 +25,30 @@ const COLORS = [
 
 export default function OverviewPage() {
   const { data, isLoading, error } = useDashboard();
+
+  const d = data as any;
+  const merchant = d?.merchant;
+  const transactions = d?.transactions;
+  const disputes = d?.disputes;
+  const readyCount = transactions?.ready || 0;
+  const incompleteCount = transactions?.incomplete || 0;
+  const needsReviewCount = transactions?.needsReview || 0;
+  const openDisputes = disputes?.open || 0;
+
+  const readinessChartData = [
+    { name: 'Ready', value: readyCount, color: '#10b981' },
+    { name: 'Incomplete', value: incompleteCount, color: '#f59e0b' },
+    { name: 'Needs Review', value: needsReviewCount, color: '#ef4444' },
+  ].filter((item) => item.value > 0);
+
+  const statusCounts: Record<string, number> = disputes?.byStatus || {};
+  const disputeStatusData = Object.entries(statusCounts).map(
+    ([name, value], i) => ({
+      name: name.replace(/_/g, ' '),
+      value,
+      color: COLORS[i % COLORS.length],
+    }),
+  );
 
   if (isLoading) {
     return (
@@ -82,44 +101,6 @@ export default function OverviewPage() {
       </DashboardLayout>
     );
   }
-
-  const d = data as any;
-  const merchant = d?.merchant;
-  const transactions = d?.transactions;
-  const disputes = d?.disputes;
-  const metrics = d?.metrics;
-  const activity = d?.activity;
-
-  const readyCount = transactions?.ready || 0;
-  const incompleteCount = transactions?.incomplete || 0;
-  const needsReviewCount = transactions?.needsReview || 0;
-  const openDisputes = disputes?.open || 0;
-
-  // Charts data
-  const readinessChartData = useMemo(
-    () =>
-      [
-        { name: 'Ready', value: readyCount, color: '#10b981' },
-        { name: 'Incomplete', value: incompleteCount, color: '#f59e0b' },
-        { name: 'Needs Review', value: needsReviewCount, color: '#ef4444' },
-      ].filter((d) => d.value > 0),
-    [readyCount, incompleteCount, needsReviewCount],
-  );
-
-  const disputeStatusData = useMemo(() => {
-    const statusCounts: Record<string, number> = disputes?.byStatus || {};
-    return Object.entries(statusCounts).map(([name, value], i) => ({
-      name: name.replace(/_/g, ' '),
-      value,
-      color: COLORS[i % COLORS.length],
-    }));
-  }, [disputes]);
-
-  const monthlyVolumeData = useMemo(() => {
-    // The optimized query doesn't return monthly volume yet
-    // This would need to be added to the backend query if needed
-    return [] as Array<{ month: string; volume: number }>;
-  }, []);
 
   return (
     <DashboardLayout>
