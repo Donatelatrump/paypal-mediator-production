@@ -57,6 +57,34 @@ pnpm dev:api
 pnpm dev:web
 ```
 
+### Run the frontend locally
+
+Use Node.js 24 and pnpm 10.34.9. From the repository root:
+
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+```
+
+For the design preview without backend credentials, create `apps/web/.env.local`:
+
+```env
+VITE_DATA_MODE=preview
+```
+
+Then run `pnpm dev:web` and open http://localhost:3000. This preview does not require a local API or database.
+
+To connect to the hosted API instead, replace `apps/web/.env.local` with:
+
+```env
+VITE_DATA_MODE=live
+VITE_API_URL=https://resolve-ai-api-ybmj.onrender.com/api
+VITE_SUPABASE_URL=https://cauossdmfgvbyjyjcdyz.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-public-key
+```
+
+Restart `pnpm dev:web` after changing environment variables, then sign in with a Supabase account that has merchant access. The hosted API must allow `http://localhost:3000` in its CORS configuration.
+
 ### Environment Variables
 
 **Root `.env` (Backend):**
